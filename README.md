@@ -2,6 +2,8 @@
 
 This is a placeholder repository for Ludum Dare 52.
 
+[![Rust Checks](https://github.com/matanlurey/ld52/actions/workflows/rust.yml/badge.svg)](https://github.com/matanlurey/ld52/actions/workflows/rust.yml)
+
 ## How to play
 
 TBD

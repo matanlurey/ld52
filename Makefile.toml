@@ -1,12 +1,10 @@
 [tasks.build-wasm]
+dependencies = ["install-wasm-bindgen", "install-wasm-support"]
 script_runner = "@shell"
 script = '''
 cargo build --release --target wasm32-unknown-unknown
 wasm-bindgen target/wasm32-unknown-unknown/release/ld52.wasm --out-dir web --no-modules --no-typescript
 '''
-
-[tasks.install]
-dependencies = ["install-wasm-bindgen", "install-wasm"]
 
 [tasks.install-simple-http-server]
 install_crate = "simple-http-server"
@@ -14,7 +12,7 @@ install_crate = "simple-http-server"
 [tasks.install-wasm-bindgen]
 install_crate = "wasm-bindgen-cli"
 
-[tasks.install-wasm]
+[tasks.install-wasm-support]
 script_runner = "@shell"
 script = '''
 rustup target add wasm32-unknown-unknown
