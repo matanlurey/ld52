@@ -1,0 +1,7 @@
+/node_modules
+/target
+
+# These are binary files.
+/web/ld52.js
+/web/ld52_bg.wasm
+/web/xterm*

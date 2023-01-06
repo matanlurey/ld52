@@ -1,0 +1,19 @@
+[package]
+name = "ld52"
+version = "0.0.0"
+edition = "2021"
+authors = ["Matan Lurey <matan@lurey.org>", "Jesse Campbell <jessec@mpbell.me>"]
+description = "Our Untitled Game for Ludum Dare 52"
+repository = "https://github.com/matanlurey/ld52"
+license = "MIT"
+keywords = ["game", "ascii", "command-line"]
+categories = ["games"]
+
+[dependencies]
+# The published version of bracket-lib doesn't compile.
+bracket-lib = { git = "https://github.com/amethyst/bracket-lib", rev = "0a7fcbcd6eb537723272906ebd88382e6a69d483" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# These exact versions are needed with bracket-lib.
+web-sys = { version = "0.3", features=["HtmlCanvasElement", "WebGl2RenderingContext", "Window"] }
+wasm-bindgen = { version = "0.2" }
