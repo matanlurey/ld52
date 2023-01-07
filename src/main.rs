@@ -2,11 +2,11 @@
 add_wasm_support!();
 
 use bracket_lib::prelude::*;
+use game::{Direction, Glyph, WorldState};
 use ui::{UIEntity, UIState, UI};
-use world::World;
 
+mod game;
 mod ui;
-mod world;
 
 fn main() -> BError {
     // TermBuilder offers a number of helps to get up and running quickly.
@@ -25,13 +25,15 @@ fn main() -> BError {
 /// We are going to try and have the game state be a representation of the game at a point in time.
 struct State {
     #[allow(dead_code)]
-    world: World,
+    game: WorldState,
 }
 
 impl State {
     /// Create a new game state.
     pub fn new() -> Self {
-        Self { world: World }
+        Self {
+            game: WorldState::new(),
+        }
     }
 }
 
@@ -41,41 +43,35 @@ impl GameState for State {
         // Clear the screen.
         ctx.cls();
 
+        // Player movement.
+        match ctx.key {
+            None => {}
+            Some(key) => match key {
+                VirtualKeyCode::Left => self.game.move_player(Direction::Left),
+                VirtualKeyCode::Right => self.game.move_player(Direction::Right),
+                VirtualKeyCode::Up => self.game.move_player(Direction::Up),
+                VirtualKeyCode::Down => self.game.move_player(Direction::Down),
+                _ => {}
+            },
+        }
+
         // Create a UI renderer.
         let mut ui = UI::new(ctx);
 
-        let mut uie = Vec::new();
-
-        // Player
-        uie.push(UIEntity {
-            x: 0,
-            y: 0,
-            sym: '@',
-        });
-
-        // Farm(s)
-        uie.push(UIEntity {
-            x: 2,
-            y: 2,
-            sym: 'F',
-        });
-
-        // Home(s)
-        uie.push(UIEntity {
-            x: 3,
-            y: 3,
-            sym: 'H',
-        });
-
-        // Goblin(s)
-        uie.push(UIEntity {
-            x: 4,
-            y: 4,
-            sym: 'G',
-        });
-
         // Create the UI state.
-        let ui_state = UIState::new(uie);
+        let ui_state = UIState::new(
+            self.game
+                .to_render()
+                .into_iter()
+                .map(|e| UIEntity {
+                    x: e.x,
+                    y: e.y,
+                    sym: match e.glyph {
+                        Glyph::Player => '@',
+                    },
+                })
+                .collect(),
+        );
 
         // Draw the UI.
         ui.draw(&ui_state);
