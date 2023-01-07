@@ -43,9 +43,10 @@ impl GameState for State {
         // Clear the screen.
         ctx.cls();
 
-        // Player movement.
+        // If a player is moving
+
         match ctx.key {
-            None => {}
+            None => self.game.stop_player(),
             Some(key) => match key {
                 VirtualKeyCode::Left => self.game.move_player(Direction::Left),
                 VirtualKeyCode::Right => self.game.move_player(Direction::Right),
@@ -53,7 +54,7 @@ impl GameState for State {
                 VirtualKeyCode::Down => self.game.move_player(Direction::Down),
                 _ => {}
             },
-        }
+        };
 
         // Create a UI renderer.
         let mut ui = UI::new(ctx);

@@ -80,6 +80,13 @@ impl<'a> UI<'a> {
         for e in &state.entities {
             let (x_ui, y_ui) = game2ui(e.x, e.y, true, state);
             self.ctx.print(x_ui, y_ui, e.sym);
+            if e.sym == '@' {
+                self.ctx.print(
+                    x_uibox + state.grid_res,
+                    y_uibox + state.grid_res,
+                    format!("X: {}, Y: {}", e.x, e.y),
+                );
+            }
         }
     }
 }
