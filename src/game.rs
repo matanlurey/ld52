@@ -42,6 +42,7 @@ pub enum Direction {
 
 pub struct WorldState {
     ecs: World,
+    player_moving: bool,
 }
 
 impl WorldState {
@@ -55,31 +56,45 @@ impl WorldState {
 
         // Creaet a player entity with ECS.
         ecs.create_entity()
-            .with(Position { x: 5, y: 4 })
+            .with(Position { x: 0, y: 0 })
             .with(Renderable {
                 glyph: Glyph::Player,
             })
             .with(Player)
             .build();
 
-        Self { ecs }
+        Self {
+            ecs,
+            player_moving: false,
+        }
     }
 
     /// Move the player in a given direction.
     pub fn move_player(&mut self, direction: Direction) {
-        let mut positions = self.ecs.write_storage::<Position>();
-        let players = self.ecs.read_storage::<Player>();
+        // Only move a player if it is not currently moving.
+        if !self.player_moving {
+            self.player_moving = true;
 
-        for (_player, pos) in (&players, &mut positions).join() {
-            let (x, y) = match direction {
-                Direction::Up => (0, -1),
-                Direction::Down => (0, 1),
-                Direction::Left => (-1, 0),
-                Direction::Right => (1, 0),
-            };
-            pos.x = (pos.x as i32 + x) as usize;
-            pos.y += (pos.y as i32 + y) as usize;
+            let mut positions = self.ecs.write_storage::<Position>();
+            let players = self.ecs.read_storage::<Player>();
+
+            for (_player, pos) in (&players, &mut positions).join() {
+                let (x, y) = match direction {
+                    Direction::Up => (0, -1),
+                    Direction::Down => (0, 1),
+                    Direction::Left => (-1, 0),
+                    Direction::Right => (1, 0),
+                };
+
+                pos.x = (pos.x as i32 + x) as usize;
+                pos.y = (pos.y as i32 + y) as usize;
+            }
         }
+    }
+
+    /// Stop player from moving
+    pub fn stop_player(&mut self) {
+        self.player_moving = false;
     }
 
     /// Return a collection of all renderable entities with their positions and glyphs.
