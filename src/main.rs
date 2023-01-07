@@ -2,6 +2,11 @@
 add_wasm_support!();
 
 use bracket_lib::prelude::*;
+use ui::{UIState, UI};
+use world::World;
+
+mod ui;
+mod world;
 
 fn main() -> BError {
     // TermBuilder offers a number of helps to get up and running quickly.
@@ -10,62 +15,39 @@ fn main() -> BError {
         .build()?;
 
     // Empty state object.
-    let state = State {
-        y: 1,
-        going_down: true,
-    };
+    let state = State::new();
 
     main_loop(context, state)
 }
 
-/// Stores game state, typically a state machine pointing to other structures.
+/// This is the game state.
 ///
-/// This is a simple demo.
+/// We are going to try and have the game state be a representation of the game at a point in time.
 struct State {
-    y: i32,
-    going_down: bool,
+    #[allow(dead_code)]
+    world: World,
+}
+
+impl State {
+    /// Create a new game state.
+    pub fn new() -> Self {
+        Self { world: World }
+    }
 }
 
 impl GameState for State {
     /// This is called every time the screen refreshes (a "tick") by the main loop.
     fn tick(&mut self, ctx: &mut BTerm) {
-        let col1 = RGB::named(CYAN);
-        let col2 = RGB::named(YELLOW);
-        let percent = self.y as f32 / 50.0;
-        let fg = col1.lerp(col2, percent);
-
+        // Clear the screen.
         ctx.cls();
 
-        ctx.print_color(1, self.y, fg, RGB::named(BLACK), "♫ ♪ Hello, Bracket! ☺");
+        // Create a UI renderer.
+        let mut ui = UI::new(ctx);
 
-        // Make the text move up and down.
-        if self.going_down {
-            self.y += 1;
-            if self.y > 48 {
-                self.going_down = false;
-            }
-        } else {
-            self.y -= 1;
-            if self.y < 2 {
-                self.going_down = true;
-            }
-        }
+        // Create the UI state.
+        let ui_state = UIState;
 
-        // Show the frame rate.
-        ctx.draw_box(39, 0, 20, 3, RGB::named(WHITE), RGB::named(BLACK));
-        ctx.print_color(
-            40,
-            1,
-            RGB::named(YELLOW),
-            RGB::named(BLACK),
-            &format!("FPS: {}", ctx.fps),
-        );
-        ctx.print_color(
-            40,
-            2,
-            RGB::named(CYAN),
-            RGB::named(BLACK),
-            &format!("Frame Time: {}ms", ctx.frame_time_ms),
-        );
+        // Draw the UI.
+        ui.draw(&ui_state);
     }
 }
