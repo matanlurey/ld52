@@ -64,8 +64,8 @@ impl GameState for State {
                 .to_render()
                 .into_iter()
                 .map(|e| UIEntity {
-                    x: e.x,
-                    y: e.y,
+                    x: e.x as i32,
+                    y: e.y as i32,
                     sym: match e.glyph {
                         Glyph::Player => '@',
                     },

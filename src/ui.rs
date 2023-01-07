@@ -26,7 +26,7 @@ pub struct UIState {
 impl UIState {
     pub fn new(entities: Vec<UIEntity>) -> Self {
         Self {
-            entities: entities,
+            entities,
             draw_grid: true, //TODO: Remove when not debugging
             width_grid: 80,
             height_grid: 50,
@@ -92,8 +92,8 @@ fn game2ui(x_game: i32, y_game: i32, is_entity: bool, state: &UIState) -> (i32, 
     let x_ui = state.grid_res * x_game;
     let y_ui = state.grid_res * y_game;
     if is_entity {
-        return (x_ui + state.grid_res / 2, y_ui + state.grid_res / 2);
+        (x_ui + state.grid_res / 2, y_ui + state.grid_res / 2)
     } else {
-        return (x_ui, y_ui);
+        (x_ui, y_ui)
     }
 }

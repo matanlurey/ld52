@@ -12,6 +12,8 @@ categories = ["games"]
 [dependencies]
 # The published version of bracket-lib doesn't compile.
 bracket-lib = { git = "https://github.com/amethyst/bracket-lib", rev = "0a7fcbcd6eb537723272906ebd88382e6a69d483" }
+specs = "0.18.0"
+specs-derive = "0.4.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # These exact versions are needed with bracket-lib.
