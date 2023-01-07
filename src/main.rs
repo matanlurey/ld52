@@ -10,8 +10,9 @@ mod ui;
 
 fn main() -> BError {
     // TermBuilder offers a number of helps to get up and running quickly.
-    let context = BTermBuilder::simple80x50()
+    let context = BTermBuilder::simple(80, 50)?
         .with_title("Hello, Bracket!")
+        .with_tile_dimensions(16, 16)
         .build()?;
 
     // Empty state object.
@@ -56,23 +57,22 @@ impl GameState for State {
             },
         };
 
-        // Create a UI renderer.
-        let mut ui = UI::new(ctx);
-
         // Create the UI state.
         let ui_state = UIState::new(
             self.game
                 .to_render()
                 .into_iter()
-                .map(|e| UIEntity {
-                    x: e.x as i32,
-                    y: e.y as i32,
-                    sym: match e.glyph {
+                .map(|de| UIEntity {
+                    sym: match de.glyph {
                         Glyph::Player => '@',
                     },
+                    e: de,
                 })
                 .collect(),
         );
+
+        // Create a UI renderer.
+        let mut ui = UI::new(ctx);
 
         // Draw the UI.
         ui.draw(&ui_state);
