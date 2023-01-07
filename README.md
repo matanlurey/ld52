@@ -30,12 +30,6 @@ First, install [`cargo-make`](https://github.com/sagiegurari/cargo-make):
 cargo install --force cargo-make
 ```
 
-Next, install all other required dependencies:
-
-```bash
-cargo make install
-```
-
 Now you can build the game to Web Assembly:
 
 ```bash
