@@ -45,17 +45,22 @@ impl GameState for State {
         ctx.cls();
 
         // If a player is moving
-
-        match ctx.key {
-            None => self.game.stop_player(),
+        let direction: Option<Direction> = match ctx.key {
+            None => None,
             Some(key) => match key {
-                VirtualKeyCode::Left => self.game.move_player(Direction::Left),
-                VirtualKeyCode::Right => self.game.move_player(Direction::Right),
-                VirtualKeyCode::Up => self.game.move_player(Direction::Up),
-                VirtualKeyCode::Down => self.game.move_player(Direction::Down),
-                _ => {}
+                VirtualKeyCode::Left | VirtualKeyCode::A => Some(Direction::Left),
+                VirtualKeyCode::Right | VirtualKeyCode::D => Some(Direction::Right),
+                VirtualKeyCode::Up | VirtualKeyCode::W => Some(Direction::Up),
+                VirtualKeyCode::Down | VirtualKeyCode::S => Some(Direction::Down),
+                _ => None,
             },
         };
+        if let Some(direction) = direction {
+            self.game.player_move(direction);
+        }
+
+        // Update the game state.
+        self.game.tick();
 
         // Create the UI state.
         let ui_state = UIState::new(

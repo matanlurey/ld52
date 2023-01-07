@@ -1,128 +1,145 @@
 use specs::prelude::*;
-use specs_derive::Component;
 
-/// Our external world, i.e. how it will be represented in the game.
+pub use components::Glyph;
+pub use components::Moving as Direction;
+
+use map::Map;
+
+use self::components::Player;
+
+mod components;
+mod map;
+mod movement;
+
+/// Our external world state, i.e. how it will be drawn to the screen.
 #[derive(Debug)]
 pub struct DrawEntity {
-    pub x: usize,
-    pub y: usize,
+    pub x: i32,
+    pub y: i32,
     pub glyph: Glyph,
 }
 
-/// What kind of glyph is meant to be drawn.
-#[derive(Clone, Debug)]
-pub enum Glyph {
-    Player,
+/// Possible states that the game can be in and executing.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RunState {
+    AwaitingInput,
+    PreRun,
+    PlayerTurn,
+    MonsterTurn,
 }
 
-/// A component that represents a tile position in the world.
-#[derive(Component, Clone)]
-struct Position {
-    x: usize,
-    y: usize,
-}
-
-/// A component that represents a renderable entity.
-#[derive(Component, Clone)]
-struct Renderable {
-    glyph: Glyph,
-}
-
-/// A component that represents a player entity.
-#[derive(Component)]
-struct Player;
-
-/// Directions that the player can move in.
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
+/// A logical representation of the game world and its state.
 pub struct WorldState {
-    ecs: World,
-    player_moving: bool,
+    pub ecs: World,
+    player_entity: Entity,
 }
 
 impl WorldState {
-    /// Create a new game state.
     pub fn new() -> Self {
         let mut ecs = World::new();
 
-        ecs.register::<Position>();
-        ecs.register::<Renderable>();
-        ecs.register::<Player>();
+        // Register all of our components.
+        ecs.register::<components::Position>();
+        ecs.register::<components::Renderable>();
+        ecs.register::<components::Player>();
+        ecs.register::<components::Monster>();
+        ecs.register::<components::Moving>();
 
-        // Creaet a player entity with ECS.
-        ecs.create_entity()
-            .with(Position { x: 0, y: 0 })
-            .with(Renderable {
-                glyph: Glyph::Player,
-            })
-            .with(Player)
+        // Insert the player.
+        let player_entity = ecs
+            .create_entity()
+            .with(components::Position::new(0, 0))
+            .with(components::Renderable::new(Glyph::Player))
+            .with(components::Player)
             .build();
 
-        Self {
-            ecs,
-            player_moving: false,
-        }
+        // Insert the map and initial running state.
+        ecs.insert(Map);
+        ecs.insert(RunState::PreRun);
+
+        Self { ecs, player_entity }
     }
 
-    /// Move the player in a given direction.
-    pub fn move_player(&mut self, direction: Direction) {
-        // Only move a player if it is not currently moving.
-        if !self.player_moving {
-            self.player_moving = true;
+    pub fn tick(&mut self) {
+        let mut run;
+        {
+            // Get the current running state.
+            let run_state = self.ecs.fetch::<RunState>();
+            run = *run_state;
+        }
 
-            let mut positions = self.ecs.write_storage::<Position>();
-            let players = self.ecs.read_storage::<Player>();
-
-            for (_player, pos) in (&players, &mut positions).join() {
-                let (x, y) = match direction {
-                    Direction::Up => (0, -1),
-                    Direction::Down => (0, 1),
-                    Direction::Left => (-1, 0),
-                    Direction::Right => (1, 0),
-                };
-
-                pos.x = (pos.x as i32 + x) as usize;
-                pos.y = (pos.y as i32 + y) as usize;
+        // State machine.
+        match run {
+            RunState::PreRun => {
+                // Run the pre-run state.
+                self.run_systems();
+                run = RunState::AwaitingInput;
+            }
+            RunState::AwaitingInput => {
+                // Wait for input.
+                run = RunState::AwaitingInput;
+            }
+            RunState::PlayerTurn => {
+                // Run the player turn.
+                self.run_systems();
+                run = RunState::MonsterTurn;
+            }
+            RunState::MonsterTurn => {
+                // Run the monster turn.
+                self.run_systems();
+                run = RunState::AwaitingInput;
             }
         }
+
+        // Store next state.
+        {
+            let mut run_state = self.ecs.fetch_mut::<RunState>();
+            *run_state = run;
+        }
     }
 
-    /// Stop player from moving
-    pub fn stop_player(&mut self) {
-        self.player_moving = false;
+    pub fn player_move(&mut self, direction: Direction) {
+        // If we're not awaiting input, don't do anything.
+        let mut run_state = self.ecs.fetch_mut::<RunState>();
+        if *run_state != RunState::AwaitingInput {
+            return;
+        }
+
+        // Get the player entity and update the movement component.
+        let mut moving = self.ecs.write_storage::<components::Moving>();
+        moving
+            .insert(self.player_entity, direction)
+            .expect("Unable to insert movement component");
+
+        // Change state to player turn.
+        *run_state = RunState::PlayerTurn;
     }
 
-    /// Return a collection of all renderable entities with their positions and glyphs.
+    fn run_systems(&mut self) {
+        // Run the systems.
+        let mut movement = movement::MovementSystem::<Player>::new();
+        movement.run_now(&self.ecs);
+        self.ecs.maintain();
+    }
+
+    /// Convert the world state into a representation that can be drawn to the screen.
     pub fn to_render(&self) -> Vec<DrawEntity> {
-        let positions = self.ecs.read_storage::<Position>();
-        let renderables = self.ecs.read_storage::<Renderable>();
+        let mut drawables = Vec::new();
 
-        (&positions, &renderables)
-            .join()
-            .map(|(pos, render)| DrawEntity {
+        // Get all of the entities that have a position and renderable component.
+        let positions = self.ecs.read_storage::<components::Position>();
+        let renderables = self.ecs.read_storage::<components::Renderable>();
+
+        // Iterate over all of the entities that have a position and renderable component.
+        for (pos, render) in (&positions, &renderables).join() {
+            let pos = pos.to_point();
+            drawables.push(DrawEntity {
                 x: pos.x,
                 y: pos.y,
-                glyph: render.glyph.clone(),
-            })
-            .collect()
-    }
-}
+                glyph: render.glyph(),
+            });
+        }
 
-mod tests {
-    #[allow(unused_imports)]
-    use super::*;
-
-    #[test]
-    fn test_game_state() {
-        let state = WorldState::new();
-
-        let entities = state.to_render();
-
-        assert_eq!(entities.len(), 1);
+        drawables
     }
 }
