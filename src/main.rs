@@ -2,7 +2,7 @@
 add_wasm_support!();
 
 use bracket_lib::prelude::*;
-use ui::{UIState, UI};
+use ui::{UIEntity, UIState, UI};
 use world::World;
 
 mod ui;
@@ -44,8 +44,38 @@ impl GameState for State {
         // Create a UI renderer.
         let mut ui = UI::new(ctx);
 
+        let mut uie = Vec::new();
+
+        // Player
+        uie.push(UIEntity {
+            x: 0,
+            y: 0,
+            sym: '@',
+        });
+
+        // Farm(s)
+        uie.push(UIEntity {
+            x: 2,
+            y: 2,
+            sym: 'F',
+        });
+
+        // Home(s)
+        uie.push(UIEntity {
+            x: 3,
+            y: 3,
+            sym: 'H',
+        });
+
+        // Goblin(s)
+        uie.push(UIEntity {
+            x: 4,
+            y: 4,
+            sym: 'G',
+        });
+
         // Create the UI state.
-        let ui_state = UIState;
+        let ui_state = UIState::new(uie);
 
         // Draw the UI.
         ui.draw(&ui_state);
