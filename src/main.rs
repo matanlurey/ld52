@@ -31,7 +31,9 @@ struct State {
 impl State {
     /// Create a new game state.
     pub fn new() -> Self {
-        Self { world: World }
+        Self {
+            world: World::demo(),
+        }
     }
 }
 
