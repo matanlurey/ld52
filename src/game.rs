@@ -51,6 +51,7 @@ impl WorldState {
 
         ecs.register::<Position>();
         ecs.register::<Renderable>();
+        ecs.register::<Player>();
 
         // Creaet a player entity with ECS.
         ecs.create_entity()
