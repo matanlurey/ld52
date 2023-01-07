@@ -15,9 +15,6 @@ fn main() -> BError {
         .with_tile_dimensions(16, 16)
         .build()?;
 
-    let (w, h) = context.get_char_size();
-    println!("Tile width {}", context.width_pixels / w);
-    println!("Tile height {}", context.height_pixels / h);
     // Empty state object.
     let state = State::new();
 
