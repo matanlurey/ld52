@@ -2,11 +2,11 @@
 add_wasm_support!();
 
 use bracket_lib::prelude::*;
+use game::{Direction, WorldState};
 use ui::{UIState, UI};
-use world::World;
 
+mod game;
 mod ui;
-mod world;
 
 fn main() -> BError {
     // TermBuilder offers a number of helps to get up and running quickly.
@@ -25,14 +25,14 @@ fn main() -> BError {
 /// We are going to try and have the game state be a representation of the game at a point in time.
 struct State {
     #[allow(dead_code)]
-    world: World,
+    game: WorldState,
 }
 
 impl State {
     /// Create a new game state.
     pub fn new() -> Self {
         Self {
-            world: World::demo(),
+            game: WorldState::new(),
         }
     }
 }
@@ -42,6 +42,24 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
         // Clear the screen.
         ctx.cls();
+
+        // Player movement.
+        match ctx.key {
+            None => {}
+            Some(key) => match key {
+                VirtualKeyCode::Left => self.game.move_player(Direction::Left),
+                VirtualKeyCode::Right => self.game.move_player(Direction::Right),
+                VirtualKeyCode::Up => self.game.move_player(Direction::Up),
+                VirtualKeyCode::Down => self.game.move_player(Direction::Down),
+                _ => {}
+            },
+        }
+
+        // Iterate the game state.
+        for entity in self.game.to_render() {
+            // TODO: Replace with drawing logic.
+            dbg!(entity);
+        }
 
         // Create a UI renderer.
         let mut ui = UI::new(ctx);
