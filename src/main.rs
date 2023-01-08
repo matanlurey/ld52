@@ -69,6 +69,7 @@ impl GameState for State {
                 .into_iter()
                 .map(|de| UIEntity {
                     sym: match de.glyph {
+                        Glyph::Goblin => 'g',
                         Glyph::Player => '@',
                     },
                     e: de,
