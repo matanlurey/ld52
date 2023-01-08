@@ -8,12 +8,15 @@ pub use components::Moving as Direction;
 
 use map::Map;
 
+use self::level_generator::LevelGenerator;
 use self::logger::LogMessage;
 use self::logger::Logs;
 
 mod combat;
 mod components;
+#[allow(dead_code)]
 mod demo;
+mod level_generator;
 mod logger;
 mod map;
 mod monster;
@@ -112,23 +115,15 @@ impl WorldState {
         ecs.register::<components::Defeated>();
 
         // Start the demo.
-        let player_entity = demo::spawn_demo(&mut ecs);
-
-        // Insert goblins at the following positions
-
-        ecs.create_entity()
-            .with(components::Position::new(11, 2))
-            .with(components::Renderable::new(Glyph::Goblin))
-            .with(components::Monster)
-            .with(components::Health::new(1))
-            .build();
+        let mut rng = RandomNumberGenerator::new();
+        let mut level_generator = LevelGenerator::new(&mut rng);
+        let level_items = level_generator.generate(12, 12, 2, 0.2);
+        let player_entity = LevelGenerator::insert(&mut ecs, level_items);
 
         // Insert the map and initial running state.
         ecs.insert(Map::new(12, 12));
         ecs.insert(RunState::PreRun);
         ecs.insert(Logs::new());
-
-        let rng = RandomNumberGenerator::new();
 
         Self {
             ecs,

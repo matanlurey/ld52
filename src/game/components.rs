@@ -45,6 +45,7 @@ pub enum Glyph {
     Goblin,
     House,
     Player,
+    Tree,
     Wall,
 }
 
