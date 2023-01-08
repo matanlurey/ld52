@@ -58,6 +58,7 @@ fn configure_player(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Player))
         .with(Health::new(32))
+        .with(Health::new(32))
         .with(Player)
 }
 
@@ -65,7 +66,7 @@ pub fn configure_goblin(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder 
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Goblin))
-        .with(Health::new(1))
+        .with(Health::new(2))
         .with(Monster)
 }
 

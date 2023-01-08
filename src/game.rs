@@ -25,6 +25,7 @@ pub struct DrawEntity {
     pub x: i32,
     pub y: i32,
     pub glyph: Glyph,
+    pub hp: (u8, u8),
 }
 
 /// Statistics used to draw the player's UI.
@@ -435,13 +436,16 @@ impl WorldState {
         // Get all of the entities that have a position and renderable component.
         let positions = self.ecs.read_storage::<components::Position>();
         let renderables = self.ecs.read_storage::<components::Renderable>();
+        let health = self.ecs.read_storage::<components::Health>();
 
         // Iterate over all of the entities that have a position and renderable component.
-        for (pos, render) in (&positions, &renderables).join() {
+        for (pos, render, hp) in (&positions, &renderables, &health).join() {
+            let pos = pos.to_point();
             drawables.push(DrawEntity {
                 x: pos.x,
                 y: pos.y,
                 glyph: render.glyph(),
+                hp: (hp.amount(), hp.maximum()),
             });
         }
 
