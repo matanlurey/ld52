@@ -7,6 +7,7 @@ use map::Map;
 
 mod combat;
 mod components;
+mod demo;
 mod map;
 mod monster;
 mod movement;
@@ -48,16 +49,11 @@ impl WorldState {
         ecs.register::<components::Attacking>();
         ecs.register::<components::Defeated>();
 
-        // Insert the player.
-        let player_entity = ecs
-            .create_entity()
-            .with(components::Position::new(0, 0))
-            .with(components::Renderable::new(Glyph::Player))
-            .with(components::Player)
-            .with(components::Health::new(1))
-            .build();
+        // Start the demo.
+        let player_entity = demo::spawn_demo(&mut ecs);
 
-        // Insert a monster.
+        // Insert goblins at the following positions
+
         ecs.create_entity()
             .with(components::Position::new(11, 2))
             .with(components::Renderable::new(Glyph::Goblin))

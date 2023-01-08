@@ -5,7 +5,7 @@
 use specs::prelude::*;
 
 use super::{
-    components::{Attacking, Defeated, Health, Moving, Position},
+    components::{Attacking, Defeated, Health, Monster, Moving, Player, Position},
     map::Map,
 };
 
@@ -17,6 +17,8 @@ pub struct ConvertMovementToMeleeAttackSystem;
 impl<'a> System<'a> for ConvertMovementToMeleeAttackSystem {
     type SystemData = (
         Entities<'a>,
+        ReadStorage<'a, Monster>,
+        ReadStorage<'a, Player>,
         ReadExpect<'a, Map>,
         ReadStorage<'a, Health>,
         ReadStorage<'a, Position>,
@@ -26,7 +28,7 @@ impl<'a> System<'a> for ConvertMovementToMeleeAttackSystem {
 
     fn run(&mut self, data: Self::SystemData) {
         // Unpack the system data.
-        let (entities, map, health, positions, mut moving, mut attacking) = data;
+        let (entities, monsters, players, map, health, positions, mut moving, mut attacking) = data;
         let mut stop_movement = Vec::<Entity>::new();
 
         // Iterate over all entities that have a position and are moving.
@@ -48,6 +50,12 @@ impl<'a> System<'a> for ConvertMovementToMeleeAttackSystem {
 
                 // If the target does not have health, do not attack.
                 if health.get(target).is_none() {
+                    continue;
+                }
+
+                // If the entity is a player, only attack monsters.
+                let is_player = players.get(entity).is_some();
+                if is_player && monsters.get(target).is_none() {
                     continue;
                 }
 
