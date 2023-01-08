@@ -3,7 +3,7 @@ add_wasm_support!();
 
 use bracket_lib::prelude::*;
 use game::{Direction, Glyph, WorldState};
-use ui::{UIEntity, UIState, UI};
+use ui::{ui2grid, UIEntity, UIState, UI};
 
 mod game;
 mod ui;
@@ -11,7 +11,7 @@ mod ui;
 fn main() -> BError {
     // TermBuilder offers a number of helps to get up and running quickly.
     let context = BTermBuilder::simple(80, 50)?
-        .with_title("Farm Captain")
+        .with_title("Harvest Captain")
         .with_tile_dimensions(16, 16)
         .build()?;
 
@@ -24,9 +24,11 @@ fn main() -> BError {
 /// This is the game state.
 ///
 /// We are going to try and have the game state be a representation of the game at a point in time.
+/// grid_res is the resolution of each grid square, i.e., a value of 4 means we have 4 titles per grid square
 struct State {
     #[allow(dead_code)]
     game: WorldState,
+    grid_res: i32,
 }
 
 impl State {
@@ -34,6 +36,7 @@ impl State {
     pub fn new() -> Self {
         Self {
             game: WorldState::new(),
+            grid_res: 4,
         }
     }
 }
@@ -44,7 +47,7 @@ impl GameState for State {
         // Clear the screen.
         ctx.cls();
 
-        // If a player is moving
+        // Direction player is moving
         let direction: Option<Direction> = match ctx.key {
             None => None,
             Some(key) => match key {
@@ -55,18 +58,30 @@ impl GameState for State {
                 _ => None,
             },
         };
+
+        // Handle Player Movement
         if let Some(direction) = direction {
             self.game.player_move(direction);
         }
 
-        // Mouse position
-        let mouse_pos = ctx.mouse_pos();
+        // Get Mouse Position
+        let mouse_pos = ui2grid(ctx.mouse_pos(), self.grid_res).to_tuple();
+
+        // Build a Wall if the left mouse button is clicked.
+        // Build a House if the SHIFT key is held down and the left mouse button is clicked.
+        if ctx.left_click {
+            if ctx.shift {
+                self.game.player_build(mouse_pos, Glyph::Farm);
+            } else {
+                self.game.player_build(mouse_pos, Glyph::Wall);
+            }
+        }
 
         // Update the game state.
         self.game.tick();
 
-        // TODO: Replace debug with UI.
-        let game_stats = self.game.get_stats();
+        // Create a UI renderer.
+        let mut ui = UI::new(ctx, self.grid_res);
 
         // Create the UI state.
         let ui_state = UIState::new(
@@ -84,12 +99,9 @@ impl GameState for State {
                     e: de,
                 })
                 .collect(),
-            game_stats,
+            self.game.get_stats(),
             mouse_pos,
         );
-
-        // Create a UI renderer.
-        let mut ui = UI::new(ctx);
 
         // Draw the UI.
         ui.draw(&ui_state);

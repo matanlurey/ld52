@@ -237,7 +237,7 @@ impl WorldState {
 
             // Check if the position is valid.
             let (x, y) = position;
-            if map.get_entity(x, y).is_none() {
+            if map.get_entity(x, y).is_some() {
                 return false;
             }
 
