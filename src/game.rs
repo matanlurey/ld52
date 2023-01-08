@@ -148,11 +148,11 @@ impl WorldState {
         // Index the map.
         map::MapIndexingSystem.run_now(&self.ecs);
 
-        // Convert movement into combat if necessary.
-        combat::ConvertMovementToMeleeAttackSystem.run_now(&self.ecs);
-
         // Let the monsters do their thing.
         monster::MonsterAISystem.run_now(&self.ecs);
+
+        // Convert movement into combat if necessary.
+        combat::ConvertMovementToMeleeAttackSystem.run_now(&self.ecs);
 
         // Apply movement.
         movement::MovementSystem.run_now(&self.ecs);
@@ -195,10 +195,11 @@ impl WorldState {
     pub fn get_stats(&self) -> GameStats {
         // Get player's HP.
         let health = {
-            let health = self.ecs.read_storage::<components::Health>();
-            let player_health = health.get(self.player_entity).unwrap();
-            // TODO: Add true max HP.
-            (player_health.amount(), player_health.amount())
+            self.ecs
+                .read_storage::<components::Health>()
+                .get(self.player_entity)
+                .map(|h| (h.amount(), h.maximum()))
+                .unwrap_or((0, 0))
         };
 
         // Get the # of farms and houses remaining.
