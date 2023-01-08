@@ -183,6 +183,59 @@ impl WorldState {
         *run_state = RunState::PlayerTurn;
     }
 
+    /// Build a structure at the given position.
+    ///
+    /// Note that only walls and farms can be built.
+    ///
+    /// Returns true if the build was successful, false otherwise.
+    #[allow(dead_code)]
+    pub fn player_build(&mut self, position: (i32, i32), what: Glyph) -> bool {
+        // If we're not in the building phase, don't do anything.
+        let run_state = { *self.ecs.fetch_mut::<RunState>() };
+        if run_state != RunState::BuildingTurn {
+            return false;
+        }
+
+        // Get the map.
+        {
+            let mut map = self.ecs.fetch_mut::<Map>();
+
+            // Check if the player has enough money.
+            let cost = match what {
+                Glyph::Wall => 1,
+                Glyph::Farm => 2,
+                _ => return false,
+            };
+            if map.money < cost {
+                return false;
+            }
+
+            // Check if the position is valid.
+            let (x, y) = position;
+            if map.get_entity(x, y).is_none() {
+                return false;
+            }
+
+            // Subtract the cost.
+            map.money -= cost;
+        }
+
+        // Build the structure.
+        let (x, y) = position;
+        let entity = self.ecs.create_entity();
+        match what {
+            Glyph::Wall => {
+                demo::configure_wall(entity, x, y).build();
+            }
+            Glyph::Farm => {
+                demo::configure_farm(entity, x, y).build();
+            }
+            _ => return false,
+        }
+
+        true
+    }
+
     fn run_systems(&mut self) {
         // Index the map.
         map::MapIndexingSystem.run_now(&self.ecs);

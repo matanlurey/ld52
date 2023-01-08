@@ -69,14 +69,14 @@ fn configure_goblin(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
         .with(Monster)
 }
 
-fn configure_farm(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
+pub fn configure_farm(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Farm))
         .with(Health::new(1))
 }
 
-fn configure_wall(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
+pub fn configure_wall(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Wall))
