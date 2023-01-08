@@ -87,6 +87,13 @@ impl GameState for State {
         // Update the game state.
         self.game.tick();
 
+        // Get logs, if any.
+        let logs = self.game.get_logs();
+        if !logs.is_empty() {
+            // TODO: Show these logs to the player.
+            println!("Logs: {:?}", logs);
+        }
+
         // Create a UI renderer.
         let mut ui = UI::new(ctx, self.grid_res);
 

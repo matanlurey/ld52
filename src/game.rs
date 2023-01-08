@@ -8,9 +8,13 @@ pub use components::Moving as Direction;
 
 use map::Map;
 
+use self::logger::LogMessage;
+use self::logger::Logs;
+
 mod combat;
 mod components;
 mod demo;
+mod logger;
 mod map;
 mod monster;
 mod movement;
@@ -122,6 +126,7 @@ impl WorldState {
         // Insert the map and initial running state.
         ecs.insert(Map::new(12, 12));
         ecs.insert(RunState::PreRun);
+        ecs.insert(Logs::new());
 
         let rng = RandomNumberGenerator::new();
 
@@ -441,6 +446,15 @@ impl WorldState {
         }
 
         drawables
+    }
+
+    /// Returns the current game logs, clearing them in the process.
+    pub fn get_logs(&mut self) -> Vec<LogMessage> {
+        // Get the logs struct.
+        let mut logs = self.ecs.fetch_mut::<Logs>();
+
+        // Get the messages.
+        logs.flush()
     }
 
     /// Get the current game statistics.

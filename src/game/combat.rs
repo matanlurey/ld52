@@ -5,7 +5,8 @@
 use specs::prelude::*;
 
 use super::{
-    components::{Attacking, Defeated, Health, Moving, Position},
+    components::{Attacking, Defeated, Health, HealthState, Moving, Position, Renderable},
+    logger::{LogMessage, Logs},
     map::Map,
 };
 
@@ -59,17 +60,37 @@ impl<'a> System<'a> for ConvertMovementToMeleeAttackSystem {
 pub struct ApplyAttackSystem;
 
 impl<'a> System<'a> for ApplyAttackSystem {
-    type SystemData = (WriteStorage<'a, Health>, WriteStorage<'a, Attacking>);
+    type SystemData = (
+        WriteStorage<'a, Health>,
+        WriteStorage<'a, Attacking>,
+        ReadStorage<'a, Renderable>,
+        ReadStorage<'a, Position>,
+        WriteExpect<'a, Logs>,
+    );
 
     fn run(&mut self, data: Self::SystemData) {
         // Unpack the system data.
-        let (mut health, mut attacking) = data;
+        let (mut health, mut attacking, renderables, positions, mut logs) = data;
 
         // Iterate over all entities that are attacking.
-        for attacking in (&mut attacking).join() {
+        for (attacking, position, render) in (&mut attacking, &positions, &renderables).join() {
             // Reduce the health of the target.
             let health = health.get_mut(attacking.target()).unwrap();
-            health.reduce(1);
+            let defeated = match health.reduce(1) {
+                HealthState::Alive => false,
+                HealthState::Defeated => true,
+            };
+
+            // Log the attack.
+            logs.add(LogMessage::Attacked {
+                attacker: render.glyph(),
+                target: {
+                    let target = renderables.get(attacking.target()).unwrap();
+                    target.glyph()
+                },
+                position: (position.x, position.y),
+                defeated,
+            })
         }
 
         // Remove the attacking component from all entities.
