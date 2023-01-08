@@ -1,5 +1,6 @@
 use std::num::NonZeroU8;
 
+use bracket_lib::random::RandomNumberGenerator;
 use specs::prelude::*;
 
 pub use components::Glyph;
@@ -70,6 +71,7 @@ pub enum RunState {
 /// A logical representation of the game world and its state.
 pub struct WorldState {
     ecs: World,
+    rng: RandomNumberGenerator,
     player_entity: Entity,
 }
 
@@ -103,7 +105,13 @@ impl WorldState {
         ecs.insert(Map::new(12, 12));
         ecs.insert(RunState::PreRun);
 
-        Self { ecs, player_entity }
+        let rng = RandomNumberGenerator::new();
+
+        Self {
+            ecs,
+            player_entity,
+            rng,
+        }
     }
 
     pub fn tick(&mut self) {
@@ -135,18 +143,13 @@ impl WorldState {
                 self.run_systems();
 
                 // If monsters have been eliminated, switch to building turn.
-                let monsters = self.ecs.read_storage::<components::Monster>();
-                if monsters.join().count() == 0 {
-                    // Increment the round.
-                    let mut map = self.ecs.fetch_mut::<Map>();
-                    map.next_round();
-
-                    // Reset the player's health.
-                    let mut health = self.ecs.write_storage::<components::Health>();
-                    health.get_mut(self.player_entity).unwrap().reset();
-
-                    // Give 1 $ for each surviving farm glyph.
-                    map.money += map.farms;
+                let monsters = self
+                    .ecs
+                    .read_storage::<components::Monster>()
+                    .join()
+                    .count();
+                if monsters == 0 {
+                    self.switch_to_building_turn();
 
                     // Move to turn building phase.
                     run = RunState::BuildingTurn;
@@ -166,6 +169,28 @@ impl WorldState {
             let mut run_state = self.ecs.fetch_mut::<RunState>();
             *run_state = run;
         }
+    }
+
+    fn switch_to_building_turn(&mut self) {
+        // Increment the round.
+        {
+            let mut map = self.ecs.fetch_mut::<Map>();
+            map.next_round();
+
+            // Reset the player's health.
+            let mut health = self.ecs.write_storage::<components::Health>();
+            health.get_mut(self.player_entity).unwrap().reset();
+
+            // Give 1 $ for each surviving farm glyph.
+            map.money += map.farms;
+
+            // Move to turn building phase.
+            let mut run_state = self.ecs.fetch_mut::<RunState>();
+            *run_state = RunState::BuildingTurn;
+        }
+
+        // Spawn a new house.
+        self.spawn_house();
     }
 
     pub fn player_move(&mut self, direction: Direction) {
@@ -236,6 +261,96 @@ impl WorldState {
         true
     }
 
+    /// Spawns a new house by finding an open position at least 2 tiles away from other houses.
+    fn spawn_house(&mut self) {
+        let (found, position) = {
+            // Get the map.
+            let map = self.ecs.fetch::<Map>();
+
+            // Find an open position at least 2 tiles away from other houses.
+            let mut position: (i32, i32) = (0, 0);
+            let mut found = false;
+
+            for _ in 0..100 {
+                position = (
+                    self.rng.range(0, map.width() as i32),
+                    self.rng.range(0, map.height() as i32),
+                );
+                if map.get_entity(position.0, position.1).is_none() {
+                    let mut valid = true;
+                    for x in position.0 - 2..position.0 + 2 {
+                        for y in position.1 - 2..position.1 + 2 {
+                            if map.get_entity(x, y).is_some() {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+                    if valid {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            (found, position)
+        };
+
+        // If we found a valid position, spawn a house.
+        if found {
+            let (x, y) = position;
+            demo::configure_house(self.ecs.create_entity(), x, y).build();
+        }
+    }
+
+    /// Indicates the player is ready, spawning goblins.
+    #[allow(dead_code)]
+    pub fn player_ready(&mut self) {
+        self.spawn_goblins();
+
+        // Change state to start the game again.
+        let mut run_state = self.ecs.fetch_mut::<RunState>();
+        *run_state = RunState::PreRun;
+    }
+
+    /// For the given round number, spawn R+1 goblins at the edge of the map.
+    fn spawn_goblins(&mut self) {
+        let positions: Vec<(i32, i32)> = {
+            // Get the map.
+            let map = self.ecs.fetch::<Map>();
+
+            // Get the round number.
+            let round = map.round().get();
+
+            // Get the positions.
+            let mut positions = Vec::new();
+            for _ in 0..round + 1 {
+                let mut position: (i32, i32) = (0, 0);
+                let mut found = false;
+                for _ in 0..100 {
+                    position = (
+                        self.rng.range(0, map.width() as i32),
+                        self.rng.range(0, map.height() as i32),
+                    );
+                    if map.get_entity(position.0, position.1).is_none() {
+                        found = true;
+                        break;
+                    }
+                }
+                if found {
+                    positions.push(position);
+                }
+            }
+
+            positions
+        };
+
+        // Spawn the goblins.
+        for (x, y) in positions {
+            demo::configure_goblin(self.ecs.create_entity(), x, y).build();
+        }
+    }
+
     fn run_systems(&mut self) {
         // Index the map.
         map::MapIndexingSystem.run_now(&self.ecs);
@@ -302,8 +417,8 @@ impl WorldState {
         };
 
         let state = {
-            // If the player is dead, the game is over.
-            if health.0 == 0 {
+            // If the player is dead or there are no houses, the game is over.
+            if health.0 == 0 || houses == 0 {
                 GameState::GameOver
             } else {
                 // Otherwise, get the current running state.

@@ -57,11 +57,11 @@ fn configure_player(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Player))
-        .with(Health::new(1))
+        .with(Health::new(3))
         .with(Player)
 }
 
-fn configure_goblin(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
+pub fn configure_goblin(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Goblin))
@@ -83,7 +83,7 @@ pub fn configure_wall(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
         .with(Health::new(1))
 }
 
-fn configure_house(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
+pub fn configure_house(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::House))
