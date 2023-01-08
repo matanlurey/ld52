@@ -1,6 +1,8 @@
 // Allow it to build as WASM.
 add_wasm_support!();
 
+use std::cmp::min;
+
 use bracket_lib::prelude::*;
 use game::{Direction, Glyph, WorldState};
 use ui::{ui2grid, UIEntity, UIState, UI};
@@ -13,6 +15,7 @@ fn main() -> BError {
     let context = BTermBuilder::simple(80, 50)?
         .with_title("Harvest Captain")
         .with_tile_dimensions(16, 16)
+        .with_fullscreen(true)
         .build()?;
 
     // Empty state object.
@@ -47,6 +50,16 @@ impl GameState for State {
         // Clear the screen.
         ctx.cls();
 
+        // Quit the game
+        if ctx.key == Some(VirtualKeyCode::Escape) {
+            ctx.quit();
+        }
+
+        // // Fullscrean toggle
+        // if ctx.key == Some(VirtualKeyCode::F11) {
+        //     ctx.with_fullscreen(true);
+        // }
+
         // Direction player is moving
         let direction: Option<Direction> = match ctx.key {
             None => None,
@@ -69,7 +82,14 @@ impl GameState for State {
 
         // Build a Wall if the left mouse button is clicked.
         // Build a House if the SHIFT key is held down and the left mouse button is clicked.
-        if ctx.left_click {
+        if in_bounds(
+            mouse_pos,
+            (
+                min(ctx.get_char_size().0, ctx.get_char_size().1) as i32 / self.grid_res,
+                min(ctx.get_char_size().0, ctx.get_char_size().1) as i32 / self.grid_res,
+            ),
+        ) && ctx.left_click
+        {
             if ctx.shift {
                 self.game.player_build(mouse_pos, Glyph::Farm);
             } else {
@@ -81,7 +101,7 @@ impl GameState for State {
         self.game.tick();
 
         // Create a UI renderer.
-        let mut ui = UI::new(ctx, self.grid_res);
+        let mut ui = UI::new(ctx, self.grid_res, LIGHTGOLDENROD);
 
         // Create the UI state.
         let ui_state = UIState::new(
@@ -96,6 +116,13 @@ impl GameState for State {
                         Glyph::Farm => 'f',
                         Glyph::House => 'h',
                     },
+                    color: match de.glyph {
+                        Glyph::Goblin => RED,
+                        Glyph::Player => SKY_BLUE,
+                        Glyph::Wall => SADDLE_BROWN,
+                        Glyph::Farm => WEB_GREEN,
+                        Glyph::House => YELLOW,
+                    },
                     e: de,
                 })
                 .collect(),
@@ -106,4 +133,8 @@ impl GameState for State {
         // Draw the UI.
         ui.draw(&ui_state);
     }
+}
+
+fn in_bounds(pos: (i32, i32), grid_size: (i32, i32)) -> bool {
+    pos.0 >= 0 && pos.0 < grid_size.0 && pos.1 >= 0 && pos.1 < grid_size.1
 }
