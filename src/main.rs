@@ -64,7 +64,6 @@ impl GameState for State {
 
         // TODO: Replace debug with UI.
         let game_stats = self.game.get_stats();
-        dbg!(game_stats);
 
         // Create the UI state.
         let ui_state = UIState::new(
@@ -82,6 +81,7 @@ impl GameState for State {
                     e: de,
                 })
                 .collect(),
+            game_stats,
         );
 
         // Create a UI renderer.
