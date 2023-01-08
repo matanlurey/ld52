@@ -21,14 +21,16 @@ pub struct UIEntity {
 pub struct UIState {
     pub entities: Vec<UIEntity>,
     pub stats: GameStats,
+    pub mouse_xy: (i32, i32),
     draw_grid: bool,
 }
 
 impl UIState {
-    pub fn new(entities: Vec<UIEntity>, stats: GameStats) -> Self {
+    pub fn new(entities: Vec<UIEntity>, stats: GameStats, mouse_xy: (i32, i32)) -> Self {
         Self {
             entities,
             stats,
+            mouse_xy,
             draw_grid: true, //TODO: Remove when not debugging
         }
     }
@@ -58,14 +60,14 @@ impl<'a> UI<'a> {
     /// Draw game entities
     fn draw_entities(&mut self, state: &UIState) {
         for e in &state.entities {
-            let ui_point = self.game2ui(e.e.x as u32, e.e.y as u32, true);
+            let ui_point = self.game2ui((e.e.x as u32, e.e.y as u32), true);
             self.ctx.print(ui_point.x, ui_point.y, e.sym);
         }
     }
 
     /// Draw UI Box
     fn draw_ui_box(&mut self, state: &UIState) {
-        self.uibox_position = self.game2ui(self.grid_size.1 / self.grid_resolution, 0, false);
+        self.uibox_position = self.game2ui((self.grid_size.1 / self.grid_resolution, 0), false);
 
         self.ctx.draw_hollow_box_double(
             self.uibox_position.x + 1,
@@ -84,6 +86,13 @@ impl<'a> UI<'a> {
         self.write_ui_box_row(3, format!("Farms  {}", state.stats.farms));
         self.write_ui_box_row(4, format!("Houses {}", state.stats.houses));
         self.write_ui_box_row(5, format!("Money  $ {}", state.stats.money));
+        self.write_ui_box_row(
+            6,
+            format!(
+                "Mouse {:?}",
+                self.ui2game((state.mouse_xy.0 as u32, state.mouse_xy.1 as u32))
+            ),
+        );
     }
 
     fn write_ui_box_row(&mut self, row: u32, value: String) {
@@ -100,7 +109,7 @@ impl<'a> UI<'a> {
         if state.draw_grid {
             for x_game in 0..(self.grid_size.1 / self.grid_resolution) {
                 for y_game in 0..(self.grid_size.1 / self.grid_resolution) {
-                    let ui_point = self.game2ui(x_game, y_game, false);
+                    let ui_point = self.game2ui((x_game, y_game), false);
                     self.ctx.draw_box(
                         ui_point.x,
                         ui_point.y,
@@ -118,16 +127,24 @@ impl<'a> UI<'a> {
     /// Transforms entity coordinates differently so that they
     /// land in center of grid. Otherwise coordinates will land in
     /// upper-left corner of bounding box.
-    fn game2ui(&self, x_game: u32, y_game: u32, is_entity: bool) -> Point {
-        let x_ui = self.grid_resolution * x_game;
-        let y_ui = self.grid_resolution * y_game;
+    fn game2ui(&self, pos_game: (u32, u32), is_entity: bool) -> Point {
         if is_entity {
             Point::new(
-                x_ui + self.grid_resolution / 2,
-                y_ui + self.grid_resolution / 2,
+                self.grid_resolution * pos_game.0 + self.grid_resolution / 2,
+                self.grid_resolution * pos_game.1 + self.grid_resolution / 2,
             )
         } else {
-            Point::new(x_ui, y_ui)
+            Point::new(
+                self.grid_resolution * pos_game.0,
+                self.grid_resolution * pos_game.1,
+            )
         }
+    }
+
+    fn ui2game(&self, pos_ui: (u32, u32)) -> Point {
+        Point::new(
+            pos_ui.0 / self.grid_resolution,
+            pos_ui.1 / self.grid_resolution,
+        )
     }
 }

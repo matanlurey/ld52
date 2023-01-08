@@ -59,6 +59,9 @@ impl GameState for State {
             self.game.player_move(direction);
         }
 
+        // Mouse position
+        let mouse_pos = ctx.mouse_pos();
+
         // Update the game state.
         self.game.tick();
 
@@ -82,6 +85,7 @@ impl GameState for State {
                 })
                 .collect(),
             game_stats,
+            mouse_pos,
         );
 
         // Create a UI renderer.
