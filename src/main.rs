@@ -62,6 +62,10 @@ impl GameState for State {
         // Update the game state.
         self.game.tick();
 
+        // TODO: Replace debug with UI.
+        let game_stats = self.game.get_stats();
+        dbg!(game_stats);
+
         // Create the UI state.
         let ui_state = UIState::new(
             self.game

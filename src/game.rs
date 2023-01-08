@@ -1,3 +1,5 @@
+use std::num::NonZeroU8;
+
 use specs::prelude::*;
 
 pub use components::Glyph;
@@ -18,6 +20,25 @@ pub struct DrawEntity {
     pub x: i32,
     pub y: i32,
     pub glyph: Glyph,
+}
+
+/// Statistics used to draw the player's UI.
+#[derive(Debug)]
+pub struct GameStats {
+    /// Round number, starting at 1.
+    pub round: NonZeroU8,
+
+    /// Current and maximum health.
+    pub health: (u8, u8),
+
+    /// Amount of $ for the player.
+    pub money: u8,
+
+    /// Farms remaining.
+    pub farms: u8,
+
+    /// Houses remaining.
+    pub houses: u8,
 }
 
 /// Possible states that the game can be in and executing.
@@ -168,5 +189,42 @@ impl WorldState {
         }
 
         drawables
+    }
+
+    /// Get the current game statistics.
+    pub fn get_stats(&self) -> GameStats {
+        // Get player's HP.
+        let health = {
+            let health = self.ecs.read_storage::<components::Health>();
+            let player_health = health.get(self.player_entity).unwrap();
+            // TODO: Add true max HP.
+            (player_health.amount(), player_health.amount())
+        };
+
+        // Get the # of farms and houses remaining.
+        let (farms, houses) = {
+            let mut farms = 0;
+            let mut houses = 0;
+
+            let renderables = self.ecs.read_storage::<components::Renderable>();
+
+            for render in (&renderables).join() {
+                match render.glyph() {
+                    Glyph::Farm => farms += 1,
+                    Glyph::House => houses += 1,
+                    _ => {}
+                }
+            }
+
+            (farms, houses)
+        };
+
+        GameStats {
+            round: NonZeroU8::new(1).unwrap(),
+            health,
+            money: 0,
+            farms,
+            houses,
+        }
     }
 }
