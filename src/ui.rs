@@ -144,6 +144,13 @@ pub fn grid2ui(pos_grid: (i32, i32), grid_res: i32, is_entity: bool) -> Point {
     } else {
         Point::new(grid_res * pos_grid.0, grid_res * pos_grid.1)
     }
+
+    fn ui2game(&self, pos_ui: (u32, u32)) -> Point {
+        Point::new(
+            pos_ui.0 / self.grid_resolution,
+            pos_ui.1 / self.grid_resolution,
+        )
+    }
 }
 
 /// Transforms native UI coordinates to grid coordinates
