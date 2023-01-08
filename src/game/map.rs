@@ -61,7 +61,7 @@ impl Map {
     /// Set the entity at the given coordinate.
     pub fn set_entity(&mut self, x: i32, y: i32, entity: Entity) {
         // If out of bounds, panic.
-        assert!(self.in_bounds(x, y));
+        assert!(self.in_bounds(x, y), "x: {}, y: {}", x, y);
         self.entities[(y as usize * self.width) + x as usize] = Some(entity);
     }
 
