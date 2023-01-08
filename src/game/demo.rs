@@ -57,7 +57,7 @@ fn configure_player(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Player))
-        .with(Health::new(3))
+        .with(Health::new(32))
         .with(Player)
 }
 
