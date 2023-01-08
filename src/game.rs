@@ -177,9 +177,7 @@ impl WorldState {
 
         // Get the player entity and update the movement component.
         let mut moving = self.ecs.write_storage::<components::Moving>();
-        moving
-            .insert(self.player_entity, direction)
-            .expect("Unable to insert movement component");
+        let _ = moving.insert(self.player_entity, direction);
 
         // Change state to player turn.
         *run_state = RunState::PlayerTurn;
