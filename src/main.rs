@@ -71,6 +71,9 @@ impl GameState for State {
                     sym: match de.glyph {
                         Glyph::Goblin => 'g',
                         Glyph::Player => '@',
+                        Glyph::Wall => '#',
+                        Glyph::Farm => 'f',
+                        Glyph::House => 'h',
                     },
                     e: de,
                 })

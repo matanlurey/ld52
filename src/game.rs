@@ -5,9 +5,9 @@ pub use components::Moving as Direction;
 
 use map::Map;
 
-use self::components::Player;
-
+mod combat;
 mod components;
+mod demo;
 mod map;
 mod monster;
 mod movement;
@@ -45,24 +45,24 @@ impl WorldState {
         ecs.register::<components::Player>();
         ecs.register::<components::Monster>();
         ecs.register::<components::Moving>();
+        ecs.register::<components::Health>();
+        ecs.register::<components::Attacking>();
+        ecs.register::<components::Defeated>();
 
-        // Insert the player.
-        let player_entity = ecs
-            .create_entity()
-            .with(components::Position::new(0, 0))
-            .with(components::Renderable::new(Glyph::Player))
-            .with(components::Player)
-            .build();
+        // Start the demo.
+        let player_entity = demo::spawn_demo(&mut ecs);
 
-        // Insert a monster.
+        // Insert goblins at the following positions
+
         ecs.create_entity()
-            .with(components::Position::new(9, 2))
+            .with(components::Position::new(11, 2))
             .with(components::Renderable::new(Glyph::Goblin))
             .with(components::Monster)
+            .with(components::Health::new(1))
             .build();
 
         // Insert the map and initial running state.
-        ecs.insert(Map);
+        ecs.insert(Map::new(12, 12));
         ecs.insert(RunState::PreRun);
 
         Self { ecs, player_entity }
@@ -124,13 +124,28 @@ impl WorldState {
     }
 
     fn run_systems(&mut self) {
-        // Run the systems.
-        let mut movement = movement::MovementSystem::<Player>::new();
-        movement.run_now(&self.ecs);
+        // Index the map.
+        map::MapIndexingSystem.run_now(&self.ecs);
 
-        let mut monster = monster::MonsterAISystem;
-        monster.run_now(&self.ecs);
+        // Convert movement into combat if necessary.
+        combat::ConvertMovementToMeleeAttackSystem.run_now(&self.ecs);
 
+        // Apply movement.
+        movement::MovementSystem.run_now(&self.ecs);
+
+        // Apply combat.
+        combat::ApplyAttackSystem.run_now(&self.ecs);
+
+        // Defeat entities.
+        combat::DefeatSystem.run_now(&self.ecs);
+
+        // Remove defeated entities.
+        combat::RemoveDefeatedSystem.run_now(&self.ecs);
+
+        // Let the monsters do their thing.
+        monster::MonsterAISystem.run_now(&self.ecs);
+
+        // Maintain the ECS (i.e. built-in systems).
         self.ecs.maintain();
     }
 

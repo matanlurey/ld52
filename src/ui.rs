@@ -84,15 +84,12 @@ impl<'a> UI<'a> {
             let (x_ui, y_ui) = self.game2ui(e.e.x as u32, e.e.y as u32, true);
             self.ctx.print(x_ui, y_ui, e.sym);
 
-            match e.e.glyph {
-                Glyph::Player => {
-                    self.ctx.print(
-                        x_uibox + self.grid_resolution,
-                        y_uibox + self.grid_resolution,
-                        format!("X: {}, Y: {}", e.e.x, e.e.y),
-                    );
-                }
-                Glyph::Goblin => {}
+            if let Glyph::Player = e.e.glyph {
+                self.ctx.print(
+                    x_uibox + self.grid_resolution,
+                    y_uibox + self.grid_resolution,
+                    format!("X: {}, Y: {}", e.e.x, e.e.y),
+                );
             }
         }
     }
