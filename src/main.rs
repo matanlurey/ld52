@@ -107,9 +107,9 @@ impl GameState for State {
                         Glyph::Goblin => 'g',
                         Glyph::Player => '@',
                         Glyph::Wall => '#',
-                        Glyph::Farm => '𝍬',
-                        Glyph::House => '☖',
-                        Glyph::Tree => '⍋',
+                        Glyph::Farm => 'f',
+                        Glyph::House => 'h',
+                        Glyph::Tree => 't',
                     },
                     e: de,
                 })

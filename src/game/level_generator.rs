@@ -5,6 +5,7 @@ use specs::{Builder, Entity, World, WorldExt};
 
 use super::{components::*, Glyph};
 
+#[derive(Debug)]
 pub struct LevelInsert {
     pub position: (u8, u8),
     pub item: LevelItem,
@@ -214,6 +215,7 @@ impl<'a> LevelGenerator<'a> {
     ///
     /// Returns the player entity.
     pub fn insert(world: &mut World, level: Vec<LevelInsert>) -> Entity {
+        dbg!(&level);
         let mut player = None;
         for insert in level {
             let position: Position = {
