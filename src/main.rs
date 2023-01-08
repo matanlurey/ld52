@@ -11,7 +11,7 @@ mod ui;
 fn main() -> BError {
     // TermBuilder offers a number of helps to get up and running quickly.
     let context = BTermBuilder::simple(80, 50)?
-        .with_title("Hello, Bracket!")
+        .with_title("Farm Captain")
         .with_tile_dimensions(16, 16)
         .build()?;
 

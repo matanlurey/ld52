@@ -27,6 +27,18 @@ impl Position {
     pub fn to_point(&self) -> Point {
         Point::new(self.x, self.y)
     }
+
+    /// Returns the (f64) distance between this Position and another Position
+    pub fn distance(&self, position: &Position) -> f64 {
+        (((self.x - position.x).pow(2) + (self.y - position.y).pow(2)) as f64).powf(0.5)
+    }
+
+    /// Return a point representing another Position's position relative to this Position
+    /// For example, { 1, 6 }.relative({ 3, 2 }) = { -2, 4 }
+    /// which means { 1, 6 } is 2 units below and 4 units to the right of { 3, 2 }
+    pub fn relative(&self, position: &Position) -> Point {
+        Point::new(self.x - position.x, self.y - position.y)
+    }
 }
 
 /// An abstract representation of a glyph that can be drawn to the screen to render an entity.
