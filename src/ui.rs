@@ -67,11 +67,7 @@ impl<'a> UI<'a> {
 
     /// Draw UI Box
     fn draw_ui_box(&mut self, state: &UIState) {
-        self.uibox_pos = grid2ui(
-            (self.grid_size.1 as i32 / self.grid_res, 0),
-            self.grid_res,
-            false,
-        );
+        self.uibox_pos = grid2ui((self.grid_size.1 / self.grid_res, 0), self.grid_res, false);
 
         self.ctx.draw_hollow_box_double(
             self.uibox_pos.x + 1,

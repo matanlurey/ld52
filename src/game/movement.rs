@@ -22,15 +22,7 @@ impl<'a> System<'a> for MovementSystem {
 
         // Iterate over all entities that have a position and are moving.
         for (position, direction) in (&mut positions, &mut moving).join() {
-            let mut prospective = position.to_point();
-
-            // Move the entity in the direction it is moving.
-            match direction {
-                Moving::Up => prospective.y -= 1,
-                Moving::Down => prospective.y += 1,
-                Moving::Left => prospective.x -= 1,
-                Moving::Right => prospective.x += 1,
-            }
+            let prospective = position.after(direction);
 
             // If there would be an overlap with another entity, do not move.
             if map.get_entity(prospective.x, prospective.y).is_some() {
@@ -39,7 +31,7 @@ impl<'a> System<'a> for MovementSystem {
 
             // If the entity is within the bounds of the map, update its position.
             if map.in_bounds(prospective.x, prospective.y) {
-                position.update(&prospective);
+                *position = prospective;
             }
         }
 
