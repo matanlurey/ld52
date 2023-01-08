@@ -33,15 +33,7 @@ impl<'a> System<'a> for ConvertMovementToMeleeAttackSystem {
 
         // Iterate over all entities that have a position and are moving.
         for (entity, position, direction) in (&entities, &positions, &mut moving).join() {
-            let mut prospective = position.to_point();
-
-            // Move the entity in the direction it is moving.
-            match direction {
-                Moving::Up => prospective.y -= 1,
-                Moving::Down => prospective.y += 1,
-                Moving::Left => prospective.x -= 1,
-                Moving::Right => prospective.x += 1,
-            }
+            let prospective = position.after(direction);
 
             // If there would be an overlap with another entity, do not move.
             if let Some(target) = map.get_entity(prospective.x, prospective.y) {

@@ -119,7 +119,6 @@ impl<'a> System<'a> for MapIndexingSystem {
 
         // Iterate over all entities with positions and index them on the map.
         for (entity, position, render) in (&entities, &positions, &render).join() {
-            let position = position.to_point();
             map.set_entity(position.x, position.y, entity);
 
             match render.glyph() {

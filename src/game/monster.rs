@@ -53,7 +53,7 @@ impl<'a> System<'a> for MonsterAISystem {
 
             direction
                 .insert(
-                    map.get_entity(monster_position.to_point().x, monster_position.to_point().y)
+                    map.get_entity(monster_position.x, monster_position.y)
                         .unwrap(),
                     goblin_direction(monster_position, nearest_player_position),
                 )

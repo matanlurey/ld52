@@ -200,6 +200,9 @@ impl WorldState {
             return;
         }
 
+        // If the move is out of bounds, don't do anything.
+        // TODO: Implement.
+
         // Get the player entity and update the movement component.
         let mut moving = self.ecs.write_storage::<components::Moving>();
         let _ = moving.insert(self.player_entity, direction);
@@ -387,7 +390,6 @@ impl WorldState {
 
         // Iterate over all of the entities that have a position and renderable component.
         for (pos, render) in (&positions, &renderables).join() {
-            let pos = pos.to_point();
             drawables.push(DrawEntity {
                 x: pos.x,
                 y: pos.y,
