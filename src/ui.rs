@@ -1,4 +1,6 @@
-use bracket_lib::terminal::{BTerm, Point, BLACK, GRAY0, WHITE};
+use std::cmp::min;
+
+use bracket_lib::terminal::{BTerm, Point, BLACK, WHITE};
 
 use crate::game::{DrawEntity, GameStats, Glyph};
 
@@ -8,10 +10,13 @@ pub struct UI<'a> {
     grid_res: i32,
     uibox_pos: Point,
     grid_size: (i32, i32),
+    grid_color: (u8, u8, u8),
+    field_size: i32,
 }
 
 pub struct UIEntity {
     pub e: DrawEntity,
+    pub color: (u8, u8, u8),
     pub sym: char,
 }
 
@@ -22,7 +27,6 @@ pub struct UIState {
     pub entities: Vec<UIEntity>,
     pub stats: GameStats,
     pub mouse_grid: (i32, i32),
-    draw_grid: bool,
 }
 
 impl UIState {
@@ -31,26 +35,28 @@ impl UIState {
             entities,
             stats,
             mouse_grid,
-            draw_grid: true, //TODO: Remove when not debugging
         }
     }
 }
 
 impl<'a> UI<'a> {
     /// Create a new UI from an existing terminal.
-    pub fn new(ctx: &'a mut BTerm, grid_res: i32) -> Self {
+    pub fn new(ctx: &'a mut BTerm, grid_res: i32, grid_color: (u8, u8, u8)) -> Self {
         let grid_size = (ctx.get_char_size().0 as i32, ctx.get_char_size().1 as i32);
+        let field_size = min(grid_size.0, grid_size.1);
         Self {
             ctx,
             grid_res,
             uibox_pos: Point::new(grid_size.0 / 4, 0),
             grid_size,
+            grid_color,
+            field_size,
         }
     }
 
     /// Draw the game to the screen.
     pub fn draw(&mut self, state: &UIState) {
-        self.draw_grid(state);
+        self.draw_grid();
 
         self.draw_ui_box(state);
 
@@ -61,17 +67,22 @@ impl<'a> UI<'a> {
     fn draw_entities(&mut self, state: &UIState) {
         for e in &state.entities {
             let e_pos_ui = grid2ui((e.e.x, e.e.y), self.grid_res, true);
-            self.ctx.print(e_pos_ui.x, e_pos_ui.y, e.sym);
+            self.ctx
+                .print_color(e_pos_ui.x, e_pos_ui.y, e.color, BLACK, e.sym);
+            match e.e.glyph {
+                Glyph::Player | Glyph::Goblin | Glyph::Wall if e.e.hp.0 > 1 => self.ctx.print(
+                    e_pos_ui.x - self.grid_res / 2 + 1,
+                    e_pos_ui.y - self.grid_res / 2 + 1,
+                    e.e.hp.0,
+                ),
+                _ => {}
+            }
         }
     }
 
     /// Draw UI Box
     fn draw_ui_box(&mut self, state: &UIState) {
-        self.uibox_pos = grid2ui(
-            (self.grid_size.1 as i32 / self.grid_res, 0),
-            self.grid_res,
-            false,
-        );
+        self.uibox_pos = grid2ui((self.field_size / self.grid_res, 0), self.grid_res, false);
 
         self.ctx.draw_hollow_box_double(
             self.uibox_pos.x + 1,
@@ -101,7 +112,6 @@ impl<'a> UI<'a> {
             }
         }
     }
-
     fn write_ui_box_row(&mut self, row: i32, value: String) {
         self.ctx.print(
             self.uibox_pos.x + self.grid_res,
@@ -111,21 +121,18 @@ impl<'a> UI<'a> {
     }
 
     /// Draw a grid (debug purposes)
-    /// note that main game field needs to be square, so use height_grid not width_grid for X dimension
-    fn draw_grid(&mut self, state: &UIState) {
-        if state.draw_grid {
-            for x_ui in 0..(self.grid_size.1 / self.grid_res) {
-                for y_ui in 0..(self.grid_size.1 / self.grid_res) {
-                    let grid_point = grid2ui((x_ui, y_ui), self.grid_res, false);
-                    self.ctx.draw_box(
-                        grid_point.x,
-                        grid_point.y,
-                        self.grid_res,
-                        self.grid_res,
-                        WHITE,
-                        GRAY0,
-                    );
-                }
+    fn draw_grid(&mut self) {
+        for x_ui in 0..(self.field_size / self.grid_res) {
+            for y_ui in 0..(self.field_size / self.grid_res) {
+                let grid_point = grid2ui((x_ui, y_ui), self.grid_res, false);
+                self.ctx.draw_box(
+                    grid_point.x,
+                    grid_point.y,
+                    self.grid_res,
+                    self.grid_res,
+                    self.grid_color,
+                    BLACK,
+                );
             }
         }
     }
