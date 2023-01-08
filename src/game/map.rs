@@ -76,12 +76,12 @@ impl Map {
     }
 
     /// Return the width of the map.
-    fn width(&self) -> usize {
+    pub fn width(&self) -> usize {
         self.width
     }
 
     /// Return the height of the map.
-    fn height(&self) -> usize {
+    pub fn height(&self) -> usize {
         self.entities.len() / self.width
     }
 
