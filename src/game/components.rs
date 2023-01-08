@@ -108,6 +108,7 @@ impl Attacking {
 #[derive(Component, Debug)]
 pub struct Health {
     amount: u8,
+    maximum: u8,
 }
 
 /// The possible states of an entity's health.
@@ -120,13 +121,22 @@ impl Health {
     /// Create a new health component.
     #[must_use]
     pub fn new(amount: u8) -> Self {
-        Self { amount }
+        Self {
+            amount,
+            maximum: amount,
+        }
     }
 
     /// Returns the amount of health.
     #[must_use]
     pub fn amount(&self) -> u8 {
         self.amount
+    }
+
+    /// Returns the maximum amount of health.
+    #[must_use]
+    pub fn maximum(&self) -> u8 {
+        self.maximum
     }
 
     /// Decrease the amount of health, returning current state of the entity.
@@ -137,6 +147,11 @@ impl Health {
         } else {
             HealthState::Alive
         }
+    }
+
+    /// Increase the amount of health to the maximum.
+    pub fn reset(&mut self) {
+        self.amount = self.maximum;
     }
 }
 
