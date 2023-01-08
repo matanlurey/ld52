@@ -75,7 +75,7 @@ pub struct Player;
 pub struct Monster;
 
 /// A component that represents an entity that is moving in a specified direction.
-#[derive(Component, Debug)]
+#[derive(Component, Clone, Debug, PartialEq, Eq)]
 pub enum Moving {
     Up,
     Down,

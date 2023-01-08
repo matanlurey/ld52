@@ -4,7 +4,7 @@ use std::num::NonZeroU8;
 
 use specs::prelude::*;
 
-use super::components::{Position, Renderable};
+use super::components::{Moving, Position, Renderable};
 
 pub struct Map {
     /// A 2D vector of entities with positions on the map.
@@ -24,6 +24,9 @@ pub struct Map {
 
     /// Remaining houses.
     pub houses: u8,
+
+    /// The game system will block the player from attacking a friendly, once per move.
+    previous_blocked_move: Option<Moving>,
 }
 
 impl Map {
@@ -42,7 +45,20 @@ impl Map {
             width,
             farms: 0,
             houses: 0,
+            previous_blocked_move: None,
         }
+    }
+
+    /// Check if the player can move in the given direction.
+    pub fn allow_move_into_friendly(&mut self, moving: Moving) -> bool {
+        if let Some(previous) = &self.previous_blocked_move {
+            if previous == &moving {
+                self.previous_blocked_move = None;
+                return true;
+            }
+        }
+        self.previous_blocked_move = Some(moving);
+        false
     }
 
     /// Clear the map.

@@ -75,6 +75,24 @@ pub struct WorldState {
     player_entity: Entity,
 }
 
+/// Why a player cannot move in a given direction.
+#[derive(Debug)]
+pub enum MovementDenied {
+    /// The player is not allowed to move at this time.
+    NotPlayerTurn,
+
+    /// The player has been defeated and/or all houses have been destroyed.
+    GameOver,
+
+    /// Either would be out of bounds or moving through impassable terrain.
+    Impassable,
+
+    /// The player is trying to move into a friendly unit or building.
+    ///
+    /// The next time this same directional input is given, the player will attack the unit/terrain.
+    Friendly,
+}
+
 impl WorldState {
     pub fn new() -> Self {
         let mut ecs = World::new();
@@ -193,15 +211,39 @@ impl WorldState {
         self.spawn_house();
     }
 
-    pub fn player_move(&mut self, direction: Direction) {
+    pub fn player_move(&mut self, direction: Direction) -> Result<(), MovementDenied> {
         // If we're not awaiting input, don't do anything.
         let mut run_state = self.ecs.fetch_mut::<RunState>();
         if *run_state != RunState::AwaitingInput {
-            return;
+            return Err(MovementDenied::NotPlayerTurn);
         }
 
         // If the move is out of bounds, don't do anything.
-        // TODO: Implement.
+        let mut map = self.ecs.fetch_mut::<Map>();
+        let position = self.ecs.read_storage::<components::Position>();
+        let position = position.get(self.player_entity);
+        if position.is_none() {
+            return Err(MovementDenied::GameOver);
+        }
+        let position = position.unwrap();
+        let position = position.after(&direction);
+        if !map.in_bounds(position.x, position.y) {
+            return Err(MovementDenied::Impassable);
+        }
+
+        // If the game is over, don't do anything.
+        if map.houses == 0 {
+            return Err(MovementDenied::GameOver);
+        }
+
+        // If the player is trying to move into a non-monster, ignore the first time.
+        let entity = map.get_entity(position.x, position.y);
+        if let Some(entity) = entity {
+            let monster = self.ecs.read_storage::<components::Monster>();
+            if monster.get(entity).is_none() && !map.allow_move_into_friendly(direction.clone()) {
+                return Err(MovementDenied::Friendly);
+            }
+        }
 
         // Get the player entity and update the movement component.
         let mut moving = self.ecs.write_storage::<components::Moving>();
@@ -209,6 +251,7 @@ impl WorldState {
 
         // Change state to player turn.
         *run_state = RunState::PlayerTurn;
+        Ok(())
     }
 
     /// Build a structure at the given position.

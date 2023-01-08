@@ -61,7 +61,14 @@ impl GameState for State {
 
         // Handle Player Movement
         if let Some(direction) = direction {
-            self.game.player_move(direction);
+            let result = self.game.player_move(direction);
+            match result {
+                Ok(_) => {}
+                Err(e) => {
+                    // TODO: Show this error to the player.
+                    eprintln!("Error: {:?}", e);
+                }
+            }
         }
 
         // Get Mouse Position
