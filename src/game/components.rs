@@ -1,31 +1,19 @@
 //! A list of [`Component`]s that can be added to an [`Entity`] in our game world.
 
-use bracket_lib::terminal::Point;
 use specs::prelude::*;
 use specs_derive::Component;
 
 /// A component that represents an entity that has a logical (x, y) position in the game world.
 #[derive(Component, Debug)]
 pub struct Position {
-    x: i32,
-    y: i32,
+    pub x: i32,
+    pub y: i32,
 }
 
 impl Position {
     /// Create a new position component.
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
-    }
-
-    /// Update the position to a new (x, y) coordinate.
-    pub fn update(&mut self, to: &Point) {
-        self.x = to.x;
-        self.y = to.y;
-    }
-
-    /// Returns the position as a tuple of (x, y).
-    pub fn to_point(&self) -> Point {
-        Point::new(self.x, self.y)
     }
 
     /// Returns the (f64) distance between this Position and another Position
@@ -36,8 +24,17 @@ impl Position {
     /// Return a point representing another Position's position relative to this Position
     /// For example, { 1, 6 }.relative({ 3, 2 }) = { -2, 4 }
     /// which means { 1, 6 } is 2 units below and 4 units to the right of { 3, 2 }
-    pub fn relative(&self, position: &Position) -> Point {
-        Point::new(self.x - position.x, self.y - position.y)
+    pub fn relative(&self, position: &Position) -> Position {
+        Position::new(self.x - position.x, self.y - position.y)
+    }
+
+    pub fn after(&self, direction: &Moving) -> Position {
+        match direction {
+            Moving::Up => Position::new(self.x, self.y - 1),
+            Moving::Down => Position::new(self.x, self.y + 1),
+            Moving::Left => Position::new(self.x - 1, self.y),
+            Moving::Right => Position::new(self.x + 1, self.y),
+        }
     }
 }
 
@@ -78,7 +75,7 @@ pub struct Player;
 pub struct Monster;
 
 /// A component that represents an entity that is moving in a specified direction.
-#[derive(Component, Debug)]
+#[derive(Component, Clone, Debug, PartialEq, Eq)]
 pub enum Moving {
     Up,
     Down,
