@@ -148,6 +148,11 @@ impl Health {
             HealthState::Alive
         }
     }
+
+    /// Increase the amount of health to the maximum.
+    pub fn reset(&mut self) {
+        self.amount = self.maximum;
+    }
 }
 
 /// A component that represents an entity that has been defeated.
