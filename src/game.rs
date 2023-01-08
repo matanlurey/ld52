@@ -9,6 +9,7 @@ use self::components::Player;
 
 mod components;
 mod map;
+mod monster;
 mod movement;
 
 /// Our external world state, i.e. how it will be drawn to the screen.
@@ -21,16 +22,16 @@ pub struct DrawEntity {
 
 /// Possible states that the game can be in and executing.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum RunState {
-    AwaitingInput,
+pub enum RunState {
     PreRun,
+    AwaitingInput,
     PlayerTurn,
     MonsterTurn,
 }
 
 /// A logical representation of the game world and its state.
 pub struct WorldState {
-    pub ecs: World,
+    ecs: World,
     player_entity: Entity,
 }
 
@@ -51,6 +52,13 @@ impl WorldState {
             .with(components::Position::new(0, 0))
             .with(components::Renderable::new(Glyph::Player))
             .with(components::Player)
+            .build();
+
+        // Insert a monster.
+        ecs.create_entity()
+            .with(components::Position::new(9, 2))
+            .with(components::Renderable::new(Glyph::Goblin))
+            .with(components::Monster)
             .build();
 
         // Insert the map and initial running state.
@@ -119,6 +127,10 @@ impl WorldState {
         // Run the systems.
         let mut movement = movement::MovementSystem::<Player>::new();
         movement.run_now(&self.ecs);
+
+        let mut monster = monster::MonsterAISystem;
+        monster.run_now(&self.ecs);
+
         self.ecs.maintain();
     }
 

@@ -32,6 +32,7 @@ impl Position {
 /// An abstract representation of a glyph that can be drawn to the screen to render an entity.
 #[derive(Clone, Copy, Debug)]
 pub enum Glyph {
+    Goblin,
     Player,
 }
 

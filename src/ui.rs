@@ -92,6 +92,7 @@ impl<'a> UI<'a> {
                         format!("X: {}, Y: {}", e.e.x, e.e.y),
                     );
                 }
+                Glyph::Goblin => {}
             }
         }
     }
