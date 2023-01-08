@@ -130,6 +130,9 @@ impl WorldState {
         // Convert movement into combat if necessary.
         combat::ConvertMovementToMeleeAttackSystem.run_now(&self.ecs);
 
+        // Let the monsters do their thing.
+        monster::MonsterAISystem.run_now(&self.ecs);
+
         // Apply movement.
         movement::MovementSystem.run_now(&self.ecs);
 
@@ -141,9 +144,6 @@ impl WorldState {
 
         // Remove defeated entities.
         combat::RemoveDefeatedSystem.run_now(&self.ecs);
-
-        // Let the monsters do their thing.
-        monster::MonsterAISystem.run_now(&self.ecs);
 
         // Maintain the ECS (i.e. built-in systems).
         self.ecs.maintain();
