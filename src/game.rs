@@ -39,6 +39,22 @@ pub struct GameStats {
 
     /// Houses remaining.
     pub houses: u8,
+
+    /// State of the game.
+    pub state: GameState,
+}
+
+/// Possible states that the game can be in.
+#[derive(Debug)]
+pub enum GameState {
+    /// The player has been defeated.
+    GameOver,
+
+    /// The player is actively playing the game.
+    DefendingTheRealm,
+
+    /// The player can now build structures (walls and farms, basically).
+    WaitingForBuild,
 }
 
 /// Possible states that the game can be in and executing.
@@ -48,6 +64,7 @@ pub enum RunState {
     AwaitingInput,
     PlayerTurn,
     MonsterTurn,
+    BuildingTurn,
 }
 
 /// A logical representation of the game world and its state.
@@ -116,7 +133,31 @@ impl WorldState {
             RunState::MonsterTurn => {
                 // Run the monster turn.
                 self.run_systems();
-                run = RunState::AwaitingInput;
+
+                // If monsters have been eliminated, switch to building turn.
+                let monsters = self.ecs.read_storage::<components::Monster>();
+                if monsters.join().count() == 0 {
+                    // Increment the round.
+                    let mut map = self.ecs.fetch_mut::<Map>();
+                    map.next_round();
+
+                    // Reset the player's health.
+                    let mut health = self.ecs.write_storage::<components::Health>();
+                    health.get_mut(self.player_entity).unwrap().reset();
+
+                    // Give 1 $ for each surviving farm glyph.
+                    map.money += map.farms;
+
+                    // Move to turn building phase.
+                    run = RunState::BuildingTurn;
+                } else {
+                    run = RunState::AwaitingInput;
+                }
+            }
+            RunState::BuildingTurn => {
+                // Run the building turn.
+                self.run_systems();
+                run = RunState::BuildingTurn;
             }
         }
 
@@ -136,23 +177,74 @@ impl WorldState {
 
         // Get the player entity and update the movement component.
         let mut moving = self.ecs.write_storage::<components::Moving>();
-        moving
-            .insert(self.player_entity, direction)
-            .expect("Unable to insert movement component");
+        let _ = moving.insert(self.player_entity, direction);
 
         // Change state to player turn.
         *run_state = RunState::PlayerTurn;
+    }
+
+    /// Build a structure at the given position.
+    ///
+    /// Note that only walls and farms can be built.
+    ///
+    /// Returns true if the build was successful, false otherwise.
+    #[allow(dead_code)]
+    pub fn player_build(&mut self, position: (i32, i32), what: Glyph) -> bool {
+        // If we're not in the building phase, don't do anything.
+        let run_state = { *self.ecs.fetch_mut::<RunState>() };
+        if run_state != RunState::BuildingTurn {
+            return false;
+        }
+
+        // Get the map.
+        {
+            let mut map = self.ecs.fetch_mut::<Map>();
+
+            // Check if the player has enough money.
+            let cost = match what {
+                Glyph::Wall => 1,
+                Glyph::Farm => 2,
+                _ => return false,
+            };
+            if map.money < cost {
+                return false;
+            }
+
+            // Check if the position is valid.
+            let (x, y) = position;
+            if map.get_entity(x, y).is_none() {
+                return false;
+            }
+
+            // Subtract the cost.
+            map.money -= cost;
+        }
+
+        // Build the structure.
+        let (x, y) = position;
+        let entity = self.ecs.create_entity();
+        match what {
+            Glyph::Wall => {
+                demo::configure_wall(entity, x, y).build();
+            }
+            Glyph::Farm => {
+                demo::configure_farm(entity, x, y).build();
+            }
+            _ => return false,
+        }
+
+        true
     }
 
     fn run_systems(&mut self) {
         // Index the map.
         map::MapIndexingSystem.run_now(&self.ecs);
 
-        // Convert movement into combat if necessary.
-        combat::ConvertMovementToMeleeAttackSystem.run_now(&self.ecs);
-
         // Let the monsters do their thing.
         monster::MonsterAISystem.run_now(&self.ecs);
+
+        // Convert movement into combat if necessary.
+        combat::ConvertMovementToMeleeAttackSystem.run_now(&self.ecs);
 
         // Apply movement.
         movement::MovementSystem.run_now(&self.ecs);
@@ -195,36 +287,41 @@ impl WorldState {
     pub fn get_stats(&self) -> GameStats {
         // Get player's HP.
         let health = {
-            let health = self.ecs.read_storage::<components::Health>();
-            let player_health = health.get(self.player_entity).unwrap();
-            // TODO: Add true max HP.
-            (player_health.amount(), player_health.amount())
+            self.ecs
+                .read_storage::<components::Health>()
+                .get(self.player_entity)
+                .map(|h| (h.amount(), h.maximum()))
+                .unwrap_or((0, 0))
         };
 
-        // Get the # of farms and houses remaining.
-        let (farms, houses) = {
-            let mut farms = 0;
-            let mut houses = 0;
+        // Get the money and round number.
+        let (money, round, farms, houses) = {
+            let map = self.ecs.fetch::<Map>();
 
-            let renderables = self.ecs.read_storage::<components::Renderable>();
+            (map.money, map.round(), map.farms, map.houses)
+        };
 
-            for render in (&renderables).join() {
-                match render.glyph() {
-                    Glyph::Farm => farms += 1,
-                    Glyph::House => houses += 1,
-                    _ => {}
+        let state = {
+            // If the player is dead, the game is over.
+            if health.0 == 0 {
+                GameState::GameOver
+            } else {
+                // Otherwise, get the current running state.
+                let run_state = self.ecs.fetch::<RunState>();
+                match *run_state {
+                    RunState::BuildingTurn => GameState::WaitingForBuild,
+                    _ => GameState::DefendingTheRealm,
                 }
             }
-
-            (farms, houses)
         };
 
         GameStats {
-            round: NonZeroU8::new(1).unwrap(),
+            round,
             health,
-            money: 0,
+            money,
             farms,
             houses,
+            state,
         }
     }
 }

@@ -27,11 +27,14 @@ impl<'a> System<'a> for MonsterAISystem {
             return;
         }
 
-        let mut nearest_player_position: &Position = (&players, &positions)
-            .join()
-            .next()
-            .expect("No player exists!")
-            .1;
+        let player = (&players, &positions).join().next();
+
+        // If there are no players, do nothing.
+        if player.is_none() {
+            return;
+        }
+
+        let mut nearest_player_position = player.unwrap().1;
 
         // Iterate over all monsters.
         for (_, monster_position) in (&monsters, &positions).join() {

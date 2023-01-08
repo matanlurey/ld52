@@ -1,15 +1,29 @@
 //! Game map.
 
+use std::num::NonZeroU8;
+
 use specs::prelude::*;
 
-use super::components::Position;
+use super::components::{Position, Renderable};
 
 pub struct Map {
     /// A 2D vector of entities with positions on the map.
     entities: Vec<Option<Entity>>,
 
+    /// Round number, starting at 1.
+    round: NonZeroU8,
+
+    /// Amount of $ for the player.
+    pub money: u8,
+
     /// The width of the map.
     width: usize,
+
+    /// Remaining farms.
+    pub farms: u8,
+
+    /// Remaining houses.
+    pub houses: u8,
 }
 
 impl Map {
@@ -23,7 +37,11 @@ impl Map {
 
         Self {
             entities: vec![None; width * height],
+            round: NonZeroU8::new(1).unwrap(),
+            money: 0,
             width,
+            farms: 0,
+            houses: 0,
         }
     }
 
@@ -66,6 +84,17 @@ impl Map {
     fn height(&self) -> usize {
         self.entities.len() / self.width
     }
+
+    /// Returns the round number.
+    #[must_use]
+    pub fn round(&self) -> NonZeroU8 {
+        self.round
+    }
+
+    /// Increments the round number.
+    pub fn next_round(&mut self) {
+        self.round = NonZeroU8::new(self.round.get() + 1).unwrap();
+    }
 }
 
 /// A system that indexes entities with positions on the map.
@@ -76,18 +105,31 @@ impl<'a> System<'a> for MapIndexingSystem {
         WriteExpect<'a, Map>,
         Entities<'a>,
         ReadStorage<'a, Position>,
+        ReadStorage<'a, Renderable>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut map, entities, positions) = data;
+        let (mut map, entities, positions, render) = data;
 
         // Clear the map.
         map.clear();
 
+        let mut total_farms = 0;
+        let mut total_houses = 0;
+
         // Iterate over all entities with positions and index them on the map.
-        for (entity, position) in (&entities, &positions).join() {
+        for (entity, position, render) in (&entities, &positions, &render).join() {
             let position = position.to_point();
             map.set_entity(position.x, position.y, entity);
+
+            match render.glyph() {
+                super::Glyph::Farm => total_farms += 1,
+                super::Glyph::House => total_houses += 1,
+                _ => (),
+            };
         }
+
+        map.farms = total_farms;
+        map.houses = total_houses;
     }
 }
