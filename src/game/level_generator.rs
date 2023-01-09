@@ -385,7 +385,7 @@ impl LevelGenerator {
                 LevelItem::House => {
                     entity
                         .with(Renderable::new(Glyph::House))
-                        .with(Health::new(1))
+                        .with(Health::new(2))
                         .with(Town)
                         .build();
                 }

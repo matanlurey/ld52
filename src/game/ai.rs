@@ -51,8 +51,6 @@ impl<'a> System<'a> for AISystem {
 
         // Iterate through AI.
         for (entity, ai, position) in (&entities, &ai, &positions).join() {
-            println!("AI: {:?}", ai);
-
             // If this a monster, and the player is adjacent, attack.
             if monsters.get(entity).is_some() && player_position.distance(position) == 1.0 {
                 moving

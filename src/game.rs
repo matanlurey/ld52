@@ -220,8 +220,11 @@ impl WorldState {
                 h.reset();
             }
 
-            // Give 1 $ for each surviving farm glyph.
-            map.money += map.farms;
+            // Give 1 $ for each surviving house glyph.
+            map.money += map.houses;
+
+            // Give 2 $ for each surviving farm glyph.
+            map.money += map.farms * 2;
 
             // Move to turn building phase.
             let mut run_state = self.ecs.fetch_mut::<RunState>();
@@ -310,6 +313,12 @@ impl WorldState {
 
             // Subtract the cost.
             map.money -= cost;
+
+            // If we are out of money
+            if map.money == 0 {
+                drop(map);
+                self.next_round();
+            }
         }
 
         // Build the structure.
@@ -326,6 +335,15 @@ impl WorldState {
         }
 
         true
+    }
+
+    fn next_round(&mut self) {
+        // Get ready to start the next round.
+        // Change to PreparingTurn.
+        let mut run_state = self.ecs.fetch_mut::<RunState>();
+        *run_state = RunState::PreRun;
+        drop(run_state);
+        self.spawn_monsters();
     }
 
     /// Spawns a new house by finding an open position at least 2 tiles away from other houses.
