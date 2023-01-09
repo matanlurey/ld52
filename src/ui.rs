@@ -86,13 +86,12 @@ impl<'a> UI<'a> {
             let e_pos_ui = grid2ui((e.e.x, e.e.y), self.grid_res, true);
             self.ctx
                 .print_color(e_pos_ui.x, e_pos_ui.y, e.color, BLACK, e.sym);
-            match e.e.glyph {
-                Glyph::Player | Glyph::Goblin | Glyph::Wall if e.e.hp.0 > 1 => self.ctx.print(
+            if e.e.hp.0 > 1 {
+                self.ctx.print(
                     e_pos_ui.x - self.grid_res / 2 + 1,
                     e_pos_ui.y - self.grid_res / 2 + 1,
                     e.e.hp.0,
-                ),
-                _ => {}
+                )
             }
         }
     }
