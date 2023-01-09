@@ -5,20 +5,21 @@ use std::cmp::min;
 
 use bracket_lib::prelude::*;
 use game::{Direction, Glyph, WorldState};
-use ui::{ui2grid, UIEntity, UIState, UI};
+use ui::{ui2grid, UIState, UI};
 
 mod game;
 mod ui;
 
 fn main() -> BError {
     // TermBuilder offers a number of helps to get up and running quickly.
-    let context = BTermBuilder::simple(80, 50)?
+    let context = BTermBuilder::simple(96, 66)?
         .with_title("Harvest Captain")
         .with_tile_dimensions(16, 16)
         .with_fullscreen(false)
         .build()?;
 
     // Empty state object.
+
     let state = State::new();
 
     main_loop(context, state)
@@ -40,9 +41,9 @@ impl State {
     pub fn new() -> Self {
         Self {
             game: WorldState::new(),
-            grid_res: 4,
-            sidebar: VirtualConsole::new(Point::new(30, 30)),
-            logger: VirtualConsole::new(Point::new(30, 20)),
+            grid_res: 5,
+            sidebar: VirtualConsole::new(Point::new(30, 44)),
+            logger: VirtualConsole::new(Point::new(30, 22)),
         }
     }
 }
@@ -87,14 +88,7 @@ impl GameState for State {
 
         // Build a Wall if the left mouse button is clicked.
         // Build a House if the SHIFT key is held down and the left mouse button is clicked.
-        if in_bounds(
-            mouse_pos,
-            (
-                min(ctx.get_char_size().0, ctx.get_char_size().1) as i32 / self.grid_res,
-                min(ctx.get_char_size().0, ctx.get_char_size().1) as i32 / self.grid_res,
-            ),
-        ) && ctx.left_click
-        {
+        if in_bounds(mouse_pos, self.game.map_size()) && ctx.left_click {
             if ctx.shift {
                 self.game.player_build(mouse_pos, Glyph::Farm);
             } else {
@@ -111,45 +105,15 @@ impl GameState for State {
             &mut self.sidebar,
             &mut self.logger,
             self.grid_res,
-            LIGHTGOLDENROD,
+            BLACK,
         );
 
         // Create the UI state.
         let ui_state = UIState::new(
-            self.game
-                .to_render()
-                .into_iter()
-                .map(|de| UIEntity {
-                    sym: match de.glyph {
-                        Glyph::Goblin => 'g',
-                        Glyph::Rat => 'r',
-                        Glyph::Orc => 'o',
-                        Glyph::Player => '@',
-                        Glyph::Wall => '#',
-                        Glyph::Farm => 'f',
-                        Glyph::House => 'h',
-                        Glyph::Tree => 't',
-                    },
-                    color: match de.glyph {
-                        Glyph::Rat => SADDLE_BROWN,
-                        Glyph::Goblin => RED,
-                        Glyph::Orc => ORANGE,
-                        Glyph::Player => SKY_BLUE,
-                        Glyph::Wall => SILVER,
-                        Glyph::Farm => WEB_GREEN,
-                        Glyph::House => YELLOW,
-                        Glyph::Tree => GREEN,
-                    },
-                    e: de,
-                })
-                .collect(),
+            self.game.to_render().into_iter().collect(),
             self.game.get_stats(),
             mouse_pos,
-            self.game
-                .get_logs()
-                .into_iter()
-                .map(|l| format!("{:?}", l))
-                .collect(),
+            self.game.get_logs(),
         );
 
         // Draw the UI.

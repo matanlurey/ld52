@@ -1,12 +1,14 @@
 use std::cmp::min;
 
-use bracket_lib::terminal::{BTerm, Console, Point, Rect, VirtualConsole, BLACK, RED, WHITE};
+use bracket_lib::prelude::*;
 
-use crate::game::{DrawEntity, GameStats, Glyph};
+use bracket_lib::terminal::{BTerm, Console, Point, Rect, VirtualConsole};
 
-pub struct UIEntity {
-    pub e: DrawEntity,
-    pub color: (u8, u8, u8),
+use crate::game::{logger::LogMessage, DrawEntity, GameStats, Glyph};
+
+pub struct UIProperties {
+    pub fg: (u8, u8, u8), // Foreground color
+    pub bg: (u8, u8, u8), // Background color
     pub sym: char,
 }
 
@@ -14,18 +16,18 @@ pub struct UIEntity {
 ///
 /// This won't know about game logic, just what to draw.
 pub struct UIState {
-    pub entities: Vec<UIEntity>,
+    pub entities: Vec<DrawEntity>,
     pub stats: GameStats,
     pub mouse_grid: (i32, i32),
-    pub logs: Vec<String>,
+    pub logs: Vec<LogMessage>,
 }
 
 impl UIState {
     pub fn new(
-        entities: Vec<UIEntity>,
+        entities: Vec<DrawEntity>,
         stats: GameStats,
         mouse_grid: (i32, i32),
-        logs: Vec<String>,
+        logs: Vec<LogMessage>,
     ) -> Self {
         Self {
             entities,
@@ -44,7 +46,6 @@ pub struct UI<'a> {
     grid_res: i32,
     grid_color: (u8, u8, u8),
     field_size: i32,
-    _logs: Vec<String>,
 }
 
 impl<'a> UI<'a> {
@@ -65,7 +66,6 @@ impl<'a> UI<'a> {
             grid_res,
             grid_color,
             field_size,
-            _logs: Vec::new(),
         }
     }
 
@@ -83,22 +83,55 @@ impl<'a> UI<'a> {
     /// Draw game entities
     fn draw_entities(&mut self, state: &UIState) {
         for e in &state.entities {
-            let e_pos_ui = grid2ui((e.e.x, e.e.y), self.grid_res, true);
-            self.ctx
-                .print_color(e_pos_ui.x, e_pos_ui.y, e.color, BLACK, e.sym);
-            if e.e.hp.0 > 1 {
-                self.ctx.print(
-                    e_pos_ui.x - self.grid_res / 2 + 1,
-                    e_pos_ui.y - self.grid_res / 2 + 1,
-                    e.e.hp.0,
-                )
+            let e_pos_ui = grid2ui((e.x, e.y), self.grid_res);
+
+            for dx in 0..self.grid_res {
+                for dy in 0..self.grid_res {
+                    self.ctx.print_color(
+                        e_pos_ui.x + dx,
+                        e_pos_ui.y + dy,
+                        ui_properties(&e.glyph).fg,
+                        ui_properties(&e.glyph).bg,
+                        if dx == self.grid_res / 2 && dy == self.grid_res / 2 {
+                            ui_properties(&e.glyph).sym
+                        } else {
+                            ' '
+                        },
+                    );
+                }
+            }
+            if e.hp.0 > 1 {
+                self.ctx.print(e_pos_ui.x + 1, e_pos_ui.y + 1, e.hp.0)
             }
         }
     }
 
     fn draw_logger(&mut self, state: &UIState) {
+        // self.logger
+        //     .set_translation_mode(CharacterTranslationMode::Unicode);
+
         for (i, log) in state.logs.iter().enumerate() {
-            self.write_row_logger(i as i32, format!("{:?}", log));
+            #[allow(clippy::single_match)]
+            match log {
+                LogMessage::Attacked {
+                    attacker,
+                    target,
+                    position,
+                    ..
+                } => {
+                    self.write_row_logger(
+                        i as i32,
+                        format!(
+                            "{:?} ⚔ {:?} at {:?}",
+                            ui_properties(attacker).sym,
+                            ui_properties(target).sym,
+                            position
+                        ),
+                    );
+                }
+                #[allow(unreachable_patterns)]
+                _ => {}
+            }
         }
 
         self.logger.draw_hollow_box_double(
@@ -114,7 +147,7 @@ impl<'a> UI<'a> {
             Rect::with_size(0, 0, self.logger.width, self.logger.height),
             Rect::with_size(
                 (self.field_size + 1).try_into().unwrap(),
-                30,
+                44,
                 self.logger.width,
                 self.logger.height,
             ),
@@ -129,7 +162,7 @@ impl<'a> UI<'a> {
             0,
             self.sidebar.width as i32 - 2,
             self.sidebar.height as i32 - 2,
-            WHITE.into(),
+            GREEN.into(),
             BLACK.into(),
         );
 
@@ -140,8 +173,8 @@ impl<'a> UI<'a> {
         self.write_row_sidebar(4, format!("Money  $ {}", state.stats.money));
         self.write_row_sidebar(5, format!("Mouse (GRID) : {:?}", state.mouse_grid));
         for uie in &state.entities {
-            if let Glyph::Player = uie.e.glyph {
-                self.write_row_sidebar(6, format!("Player {:?}", (uie.e.x, uie.e.y)));
+            if let Glyph::Player = uie.glyph {
+                self.write_row_sidebar(6, format!("Player {:?}", (uie.x, uie.y)));
             }
         }
         self.sidebar.print_sub_rect(
@@ -174,7 +207,7 @@ impl<'a> UI<'a> {
     fn draw_grid(&mut self) {
         for x_ui in 0..(self.field_size / self.grid_res) {
             for y_ui in 0..(self.field_size / self.grid_res) {
-                let grid_point = grid2ui((x_ui, y_ui), self.grid_res, false);
+                let grid_point = grid2ui((x_ui, y_ui), self.grid_res);
                 self.ctx.draw_box(
                     grid_point.x,
                     grid_point.y,
@@ -192,18 +225,57 @@ impl<'a> UI<'a> {
 /// Transforms entity coordinates differently so that they
 /// land in center of grid. Otherwise coordinates will land in
 /// upper-left corner of bounding box.
-pub fn grid2ui(pos_grid: (i32, i32), grid_res: i32, is_entity: bool) -> Point {
-    if is_entity {
-        Point::new(
-            grid_res * pos_grid.0 + grid_res / 2,
-            grid_res * pos_grid.1 + grid_res / 2,
-        )
-    } else {
-        Point::new(grid_res * pos_grid.0, grid_res * pos_grid.1)
-    }
+pub fn grid2ui(pos_grid: (i32, i32), grid_res: i32) -> Point {
+    Point::new(grid_res * pos_grid.0, grid_res * pos_grid.1)
 }
 
 /// Transforms native UI coordinates to grid coordinates
 pub fn ui2grid(pos_ui: (i32, i32), grid_res: i32) -> Point {
     Point::new(pos_ui.0 / grid_res, pos_ui.1 / grid_res)
+}
+
+/// Create UIProperites struct for all Glyph types
+fn ui_properties(g: &Glyph) -> UIProperties {
+    match g {
+        Glyph::Goblin => UIProperties {
+            fg: RED,
+            bg: BLACK,
+            sym: 'g',
+        },
+        Glyph::Rat => UIProperties {
+            fg: SADDLE_BROWN,
+            bg: BLACK,
+            sym: 'r',
+        },
+        Glyph::Player => UIProperties {
+            fg: SKY_BLUE,
+            bg: DARKBLUE,
+            sym: '@',
+        },
+        Glyph::Wall => UIProperties {
+            fg: SILVER,
+            bg: BLACK,
+            sym: '#',
+        },
+        Glyph::Farm => UIProperties {
+            fg: GOLD,
+            bg: LIGHTGREEN,
+            sym: 'f',
+        },
+        Glyph::House => UIProperties {
+            fg: PURPLE,
+            bg: LIGHTGREEN,
+            sym: 'h',
+        },
+        Glyph::Tree => UIProperties {
+            fg: DARKGREEN,
+            bg: LIGHTGREEN,
+            sym: 't',
+        },
+        Glyph::Orc => UIProperties {
+            fg: ORANGE,
+            bg: BLACK,
+            sym: 'o',
+        },
+    }
 }
