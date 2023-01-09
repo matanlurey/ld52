@@ -245,20 +245,25 @@ pub fn ui2grid(pos_ui: (i32, i32), grid_res: i32) -> Point {
 /// Create UIProperites struct for all Glyph types
 fn ui_properties(g: &Glyph) -> UIProperties {
     match g {
+        Glyph::Player => UIProperties {
+            fg: WHITE,
+            bg: CADET_BLUE,
+            sym: '@',
+        },
         Glyph::Goblin => UIProperties {
-            fg: RED,
-            bg: BLACK,
+            fg: BLACK,
+            bg: RED,
             sym: 'g',
         },
         Glyph::Rat => UIProperties {
-            fg: SADDLE_BROWN,
-            bg: BLACK,
+            fg: BLACK,
+            bg: SADDLE_BROWN,
             sym: 'r',
         },
-        Glyph::Player => UIProperties {
-            fg: WHITE,
-            bg: BLACK,
-            sym: '@',
+        Glyph::Orc => UIProperties {
+            fg: BLACK,
+            bg: ORANGE,
+            sym: 'o',
         },
         Glyph::Wall => UIProperties {
             fg: GRAY10,
@@ -279,11 +284,6 @@ fn ui_properties(g: &Glyph) -> UIProperties {
             fg: DARKGREEN,
             bg: LIGHTGREEN,
             sym: 't',
-        },
-        Glyph::Orc => UIProperties {
-            fg: ORANGE,
-            bg: BLACK,
-            sym: 'o',
         },
     }
 }
