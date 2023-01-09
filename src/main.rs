@@ -15,7 +15,7 @@ fn main() -> BError {
     let context = BTermBuilder::simple(80, 50)?
         .with_title("Harvest Captain")
         .with_tile_dimensions(16, 16)
-        .with_fullscreen(true)
+        // .with_fullscreen(true)
         .build()?;
 
     // Empty state object.
