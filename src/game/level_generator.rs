@@ -379,24 +379,28 @@ impl LevelGenerator {
                     entity
                         .with(Renderable::new(Glyph::Farm))
                         .with(Health::new(1))
+                        .with(Town)
                         .build();
                 }
                 LevelItem::House => {
                     entity
                         .with(Renderable::new(Glyph::House))
                         .with(Health::new(1))
+                        .with(Town)
                         .build();
                 }
                 LevelItem::Wall => {
                     entity
                         .with(Renderable::new(Glyph::Wall))
                         .with(Health::new(3))
+                        .with(Town)
                         .build();
                 }
                 LevelItem::Tree => {
                     entity
                         .with(Renderable::new(Glyph::Tree))
                         .with(Health::new(1))
+                        .with(Town)
                         .build();
                 }
             }

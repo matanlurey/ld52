@@ -15,6 +15,7 @@ use self::level_generator::LevelItem;
 use self::logger::LogMessage;
 use self::logger::Logs;
 
+mod ai;
 mod combat;
 mod components;
 #[allow(dead_code)]
@@ -22,7 +23,6 @@ mod demo;
 mod level_generator;
 mod logger;
 mod map;
-mod monster;
 mod movement;
 mod tree_growth;
 
@@ -113,6 +113,8 @@ impl WorldState {
         ecs.register::<components::Renderable>();
         ecs.register::<components::Player>();
         ecs.register::<components::Monster>();
+        ecs.register::<components::Town>();
+        ecs.register::<components::AI>();
         ecs.register::<components::Moving>();
         ecs.register::<components::Health>();
         ecs.register::<components::Attacking>();
@@ -396,8 +398,22 @@ impl WorldState {
 
     /// For the given round number, spawn R+3 goblins at the edge of the map.
     fn spawn_monsters(&mut self) {
+        let round_number = self.ecs.fetch::<Map>().round().get();
+
         // Get the round number to determine how many goblins to spawn.
-        let goblins_to_spawn = { self.ecs.fetch::<Map>().round().get() + 3 } as usize;
+        let mut monsters_to_spawn = round_number as usize + 3;
+        let mut rats_to_spawn = 0;
+
+        // After round 2, a goblin has a 20% chance of being 2 rats instead.
+        if round_number > 1 {
+            let rng = &mut self.rng();
+            for _ in 0..monsters_to_spawn {
+                if rng.range(0, 100) < 20 {
+                    rats_to_spawn += 2;
+                }
+            }
+            monsters_to_spawn += rats_to_spawn;
+        }
 
         let positions: Vec<(i32, i32)> = {
             // Get the map and level generator.
@@ -409,7 +425,7 @@ impl WorldState {
 
             // Get the positions.
             let mut positions = Vec::new();
-            while positions.len() < goblins_to_spawn {
+            while positions.len() < monsters_to_spawn {
                 // Make a list of all positions from_edge tiles away from the edge.
                 let mut positions_to_try = Vec::new();
 
@@ -473,13 +489,26 @@ impl WorldState {
                 0
             }
         };
-        for (x, y) in positions.into_iter().take(goblins_to_spawn) {
+        for (x, y) in positions.into_iter().take(monsters_to_spawn) {
+            // Create a blank entity.
+            let entity = self.ecs.create_entity();
+
+            // First, spawn rats.
+            if rats_to_spawn > 0 {
+                rats_to_spawn -= 1;
+                demo::configure_rat(entity, x, y).build();
+                continue;
+            }
+
+            // Next, spawn orcs.
             if orcs > 0 {
                 orcs -= 1;
-                demo::configure_orc(self.ecs.create_entity(), x, y).build();
-            } else {
-                demo::configure_goblin(self.ecs.create_entity(), x, y).build();
+                demo::configure_orc(entity, x, y).build();
+                continue;
             }
+
+            // Otherwise, spawn goblins.
+            demo::configure_goblin(entity, x, y).build();
         }
     }
 
@@ -488,7 +517,7 @@ impl WorldState {
         map::MapIndexingSystem.run_now(&self.ecs);
 
         // Let the monsters do their thing.
-        monster::MonsterAISystem.run_now(&self.ecs);
+        ai::AISystem.run_now(&self.ecs);
 
         // Convert movement into combat if necessary.
         combat::ConvertMovementToMeleeAttackSystem.run_now(&self.ecs);
