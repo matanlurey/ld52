@@ -1,13 +1,17 @@
 use bracket_lib::random::RandomNumberGenerator;
 use specs::prelude::*;
 
-use super::components::{Monster, Moving, Player, Position, Town, AI};
+use super::{
+    components::{Monster, Moving, Player, Position, Town, AI},
+    RunState,
+};
 
 pub struct AISystem;
 
 impl<'a> System<'a> for AISystem {
     type SystemData = (
         Entities<'a>,
+        ReadExpect<'a, RunState>,
         ReadStorage<'a, Monster>,
         ReadStorage<'a, Town>,
         ReadStorage<'a, Player>,
@@ -19,7 +23,19 @@ impl<'a> System<'a> for AISystem {
 
     fn run(&mut self, data: Self::SystemData) {
         // Unpack the system data.
-        let (entities, monsters, towns, players, ai, positions, mut moving, mut rng) = data;
+        let (entities, state, monsters, towns, players, ai, positions, mut moving, mut rng) = data;
+
+        // If this is not the monster's turn, do nothing.
+        if *state != RunState::MonsterTurn {
+            return;
+        }
+
+        let player = (&players, &positions).join().next();
+
+        // If there are no players, do nothing.
+        if player.is_none() {
+            return;
+        }
 
         // Find all town entities on the map.
         let town_positions: Vec<Position> = {
@@ -31,50 +47,58 @@ impl<'a> System<'a> for AISystem {
         };
 
         // Find the player entity on the map.
-        let player_position = {
-            let mut player_position: Option<Position> = None;
-            for (position, _) in (&positions, &players).join() {
-                player_position = Some(position.clone());
-            }
-            player_position.expect("A player must exist for AI to function?")
-        };
+        let player_position = player.unwrap().1;
 
         // Iterate through AI.
-        for (entity, ai, position, moving) in (&entities, &ai, &positions, &mut moving).join() {
+        for (entity, ai, position) in (&entities, &ai, &positions).join() {
+            println!("AI: {:?}", ai);
+
             // If this a monster, and the player is adjacent, attack.
             if monsters.get(entity).is_some() && player_position.distance(position) == 1.0 {
-                *moving = best_direction(position, &player_position);
+                moving
+                    .insert(entity, best_direction(position, player_position))
+                    .unwrap();
                 continue;
             }
 
             // Move based on the AIs type.
-            *moving = match ai {
-                AI::Wander => {
-                    // Pick a random direction.
-                    rng.random_slice_entry(&[Moving::Up, Moving::Down, Moving::Left, Moving::Right])
-                        .unwrap()
-                        .clone()
-                }
-                AI::PrioritizeTown => {
-                    // Find the closest town and move towards it.
-                    let mut closest_distance = i32::MAX.into();
-                    let mut closest_position = Position::new(0, 0);
-
-                    for town_position in town_positions.iter() {
-                        let distance = position.distance(town_position);
-                        if distance < closest_distance {
-                            closest_distance = distance;
-                            closest_position = town_position.clone();
+            moving
+                .insert(
+                    entity,
+                    match ai {
+                        AI::Wander => {
+                            // Pick a random direction.
+                            rng.random_slice_entry(&[
+                                Moving::Up,
+                                Moving::Down,
+                                Moving::Left,
+                                Moving::Right,
+                            ])
+                            .unwrap()
+                            .clone()
                         }
-                    }
+                        AI::PrioritizeTown => {
+                            // Find the closest town and move towards it.
+                            let mut closest_distance = i32::MAX.into();
+                            let mut closest_position = Position::new(0, 0);
 
-                    best_direction(position, &closest_position)
-                }
-                AI::PrioritizePlayer => {
-                    // Move towards the player.
-                    best_direction(position, &player_position)
-                }
-            }
+                            for town_position in town_positions.iter() {
+                                let distance = position.distance(town_position);
+                                if distance < closest_distance {
+                                    closest_distance = distance;
+                                    closest_position = town_position.clone();
+                                }
+                            }
+
+                            best_direction(position, &closest_position)
+                        }
+                        AI::PrioritizePlayer => {
+                            // Move towards the player.
+                            best_direction(position, player_position)
+                        }
+                    },
+                )
+                .unwrap();
         }
     }
 }

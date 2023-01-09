@@ -400,7 +400,6 @@ impl LevelGenerator {
                     entity
                         .with(Renderable::new(Glyph::Tree))
                         .with(Health::new(1))
-                        .with(Town)
                         .build();
                 }
             }
