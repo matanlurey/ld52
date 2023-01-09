@@ -1,8 +1,6 @@
 // Allow it to build as WASM.
 add_wasm_support!();
 
-use std::cmp::min;
-
 use bracket_lib::prelude::*;
 use game::{Direction, Glyph, WorldState};
 use ui::{ui2grid, UIState, UI};
@@ -11,16 +9,24 @@ mod game;
 mod ui;
 
 fn main() -> BError {
+    let tile_size = 16;
+    let grid_res = 6;
+    let grid_size = 12;
+    let aspect_ratio = 8.0 / 5.0;
+    let width = (grid_size as f64 * aspect_ratio * grid_res as f64) as i32;
+    let height = grid_size * grid_res;
+    let ui_sidebar_ratio = 2.0 / 3.0;
+
     // TermBuilder offers a number of helps to get up and running quickly.
-    let context = BTermBuilder::simple(96, 66)?
+    let context = BTermBuilder::simple(width, height)?
         .with_title("Harvest Captain")
-        .with_tile_dimensions(16, 16)
+        .with_tile_dimensions(tile_size, tile_size)
         .with_fullscreen(false)
         .build()?;
 
     // Empty state object.
 
-    let state = State::new();
+    let state = State::new(height, width, grid_res, ui_sidebar_ratio);
 
     main_loop(context, state)
 }
@@ -38,12 +44,18 @@ struct State {
 
 impl State {
     /// Create a new game state.
-    pub fn new() -> Self {
+    pub fn new(height: i32, width: i32, grid_res: i32, ui_sidebar_ratio: f64) -> Self {
         Self {
             game: WorldState::new(),
-            grid_res: 5,
-            sidebar: VirtualConsole::new(Point::new(30, 44)),
-            logger: VirtualConsole::new(Point::new(30, 22)),
+            grid_res,
+            sidebar: VirtualConsole::new(Point::new(
+                width - height,
+                (height as f64 * ui_sidebar_ratio) as i32,
+            )),
+            logger: VirtualConsole::new(Point::new(
+                width - height,
+                (height as f64 * (1.0 - ui_sidebar_ratio)) as i32,
+            )),
         }
     }
 }
@@ -105,7 +117,8 @@ impl GameState for State {
             &mut self.sidebar,
             &mut self.logger,
             self.grid_res,
-            BLACK,
+            GRAY90,
+            self.game.map_size(),
         );
 
         // Create the UI state.

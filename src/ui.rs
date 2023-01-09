@@ -46,6 +46,7 @@ pub struct UI<'a> {
     grid_res: i32,
     grid_color: (u8, u8, u8),
     field_size: i32,
+    _map_size: (i32, i32),
 }
 
 impl<'a> UI<'a> {
@@ -56,9 +57,9 @@ impl<'a> UI<'a> {
         logger: &'a mut VirtualConsole,
         grid_res: i32,
         grid_color: (u8, u8, u8),
+        map_size: (i32, i32),
     ) -> Self {
-        let grid_size = (ctx.get_char_size().0 as i32, ctx.get_char_size().1 as i32);
-        let field_size = min(grid_size.0, grid_size.1);
+        let field_size = min(map_size.0, map_size.1) * grid_res;
         Self {
             ctx,
             sidebar,
@@ -66,6 +67,7 @@ impl<'a> UI<'a> {
             grid_res,
             grid_color,
             field_size,
+            _map_size: map_size,
         }
     }
 
@@ -85,8 +87,8 @@ impl<'a> UI<'a> {
         for e in &state.entities {
             let e_pos_ui = grid2ui((e.x, e.y), self.grid_res);
 
-            for dx in 0..self.grid_res {
-                for dy in 0..self.grid_res {
+            for dx in 1..self.grid_res {
+                for dy in 1..self.grid_res {
                     self.ctx.print_color(
                         e_pos_ui.x + dx,
                         e_pos_ui.y + dy,
@@ -107,9 +109,6 @@ impl<'a> UI<'a> {
     }
 
     fn draw_logger(&mut self, state: &UIState) {
-        // self.logger
-        //     .set_translation_mode(CharacterTranslationMode::Unicode);
-
         for (i, log) in state.logs.iter().enumerate() {
             #[allow(clippy::single_match)]
             match log {
@@ -122,7 +121,7 @@ impl<'a> UI<'a> {
                     self.write_row_logger(
                         i as i32,
                         format!(
-                            "{:?} ⚔ {:?} at {:?}",
+                            "{:?} attacked {:?} at {:?}!",
                             ui_properties(attacker).sym,
                             ui_properties(target).sym,
                             position
@@ -146,15 +145,21 @@ impl<'a> UI<'a> {
         self.logger.print_sub_rect(
             Rect::with_size(0, 0, self.logger.width, self.logger.height),
             Rect::with_size(
-                (self.field_size + 1).try_into().unwrap(),
-                44,
+                (self._map_size.0 * self.grid_res + 1) as u32,
+                self.sidebar.height,
                 self.logger.width,
                 self.logger.height,
             ),
             self.ctx,
         );
     }
-
+    fn write_row_logger(&mut self, row: i32, value: String) {
+        self.logger.print(
+            self.grid_res / 2,
+            (self.grid_res as f64 * (row as f64 + 0.5)) as i32,
+            &value,
+        );
+    }
     /// Draw Sidebar
     fn draw_sidebar(&mut self, state: &UIState) {
         self.sidebar.draw_hollow_box_double(
@@ -166,33 +171,36 @@ impl<'a> UI<'a> {
             BLACK.into(),
         );
 
-        self.write_row_sidebar(0, format!("Health {:?}", state.stats.health));
-        self.write_row_sidebar(1, format!("Round  {}", state.stats.round));
-        self.write_row_sidebar(2, format!("Farms  {}", state.stats.farms));
-        self.write_row_sidebar(3, format!("Houses {}", state.stats.houses));
-        self.write_row_sidebar(4, format!("Money  $ {}", state.stats.money));
-        self.write_row_sidebar(5, format!("Mouse (GRID) : {:?}", state.mouse_grid));
-        for uie in &state.entities {
-            if let Glyph::Player = uie.glyph {
-                self.write_row_sidebar(6, format!("Player {:?}", (uie.x, uie.y)));
-            }
-        }
+        self.write_row_sidebar(0, format!("Round  {}", state.stats.round));
+        self.write_row_sidebar(1, format!("Health {:?}", state.stats.health));
+        self.write_row_sidebar(
+            2,
+            format!(
+                "Houses  {}  / Farms {}",
+                state.stats.houses, state.stats.farms
+            ),
+        );
+        self.write_row_sidebar(3, format!("Money  $ {}", state.stats.money));
+        // self.write_row_sidebar(3, format!("Houses {}", state.stats.houses));
+        // self.write_row_sidebar(5, format!("Mouse (GRID) : {:?}", state.mouse_grid));
+        // for uie in &state.entities {
+        //     if let Glyph::Player = uie.glyph {
+        //         self.write_row_sidebar(6, format!("Player {:?}", (uie.x, uie.y)));
+        //     }
+        // }
+        //TODO: get price from state here
+        self.write_row_sidebar(5, "Buy # ($1) with left click".to_string());
+        self.write_row_sidebar(6, "Buy f ($2) with shift + left click".to_string());
+
         self.sidebar.print_sub_rect(
             Rect::with_size(0, 0, self.sidebar.width, self.sidebar.height),
             Rect::with_size(
-                (self.field_size + 1).try_into().unwrap(),
+                (self._map_size.0 * self.grid_res + 1) as u32,
                 0,
                 self.sidebar.width,
                 self.sidebar.height,
             ),
             self.ctx,
-        );
-    }
-    fn write_row_logger(&mut self, row: i32, value: String) {
-        self.logger.print(
-            self.grid_res / 2,
-            (self.grid_res as f64 * (row as f64 + 0.5)) as i32,
-            &value,
         );
     }
     fn write_row_sidebar(&mut self, row: i32, value: String) {
@@ -248,23 +256,23 @@ fn ui_properties(g: &Glyph) -> UIProperties {
             sym: 'r',
         },
         Glyph::Player => UIProperties {
-            fg: SKY_BLUE,
-            bg: DARKBLUE,
+            fg: WHITE,
+            bg: BLACK,
             sym: '@',
         },
         Glyph::Wall => UIProperties {
-            fg: SILVER,
-            bg: BLACK,
+            fg: GRAY10,
+            bg: GRAY75,
             sym: '#',
         },
         Glyph::Farm => UIProperties {
-            fg: GOLD,
-            bg: LIGHTGREEN,
+            fg: DARKGREEN,
+            bg: PALE_GOLDENROD,
             sym: 'f',
         },
         Glyph::House => UIProperties {
-            fg: PURPLE,
-            bg: LIGHTGREEN,
+            fg: DARK_RED,
+            bg: GRAY50,
             sym: 'h',
         },
         Glyph::Tree => UIProperties {
