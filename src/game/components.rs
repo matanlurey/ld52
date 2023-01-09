@@ -1,5 +1,6 @@
 //! A list of [`Component`]s that can be added to an [`Entity`] in our game world.
 
+use bracket_lib::terminal::Point;
 use specs::prelude::*;
 use specs_derive::Component;
 
@@ -35,6 +36,10 @@ impl Position {
             Moving::Left => Position::new(self.x - 1, self.y),
             Moving::Right => Position::new(self.x + 1, self.y),
         }
+    }
+
+    pub fn to_point(&self) -> Point {
+        Point::new(self.x, self.y)
     }
 }
 
