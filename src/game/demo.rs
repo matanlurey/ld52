@@ -61,11 +61,30 @@ fn configure_player(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
         .with(Player)
 }
 
+pub fn configure_rat(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
+    entity
+        .with(Position::new(x, y))
+        .with(Renderable::new(Glyph::Rat))
+        .with(Health::new(1))
+        .with(AI::Wander)
+        .with(Monster)
+}
+
 pub fn configure_goblin(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Goblin))
+        .with(Health::new(1))
+        .with(AI::PrioritizePlayer)
+        .with(Monster)
+}
+
+pub fn configure_orc(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
+    entity
+        .with(Position::new(x, y))
+        .with(Renderable::new(Glyph::Orc))
         .with(Health::new(2))
+        .with(AI::PrioritizeTown)
         .with(Monster)
 }
 
@@ -74,6 +93,7 @@ pub fn configure_farm(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Farm))
         .with(Health::new(1))
+        .with(Town)
 }
 
 pub fn configure_wall(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
@@ -81,6 +101,7 @@ pub fn configure_wall(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Wall))
         .with(Health::new(3))
+        .with(Town)
 }
 
 pub fn configure_house(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
@@ -88,4 +109,5 @@ pub fn configure_house(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::House))
         .with(Health::new(2))
+        .with(Town)
 }

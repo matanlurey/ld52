@@ -125,6 +125,7 @@ impl GameState for State {
                 .map(|de| UIEntity {
                     sym: match de.glyph {
                         Glyph::Goblin => 'g',
+                        Glyph::Rat => 'r',
                         Glyph::Orc => 'o',
                         Glyph::Player => '@',
                         Glyph::Wall => '#',
@@ -133,10 +134,11 @@ impl GameState for State {
                         Glyph::Tree => 't',
                     },
                     color: match de.glyph {
+                        Glyph::Rat => SADDLE_BROWN,
                         Glyph::Goblin => RED,
                         Glyph::Orc => ORANGE,
                         Glyph::Player => SKY_BLUE,
-                        Glyph::Wall => SADDLE_BROWN,
+                        Glyph::Wall => SILVER,
                         Glyph::Farm => WEB_GREEN,
                         Glyph::House => YELLOW,
                         Glyph::Tree => GREEN,

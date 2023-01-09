@@ -4,7 +4,7 @@ use specs::prelude::*;
 use specs_derive::Component;
 
 /// A component that represents an entity that has a logical (x, y) position in the game world.
-#[derive(Component, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
@@ -21,13 +21,6 @@ impl Position {
         (((self.x - position.x).pow(2) + (self.y - position.y).pow(2)) as f64).powf(0.5)
     }
 
-    /// Return a point representing another Position's position relative to this Position
-    /// For example, { 1, 6 }.relative({ 3, 2 }) = { -2, 4 }
-    /// which means { 1, 6 } is 2 units below and 4 units to the right of { 3, 2 }
-    pub fn relative(&self, position: &Position) -> Position {
-        Position::new(self.x - position.x, self.y - position.y)
-    }
-
     pub fn after(&self, direction: &Moving) -> Position {
         match direction {
             Moving::Up => Position::new(self.x, self.y - 1),
@@ -42,8 +35,8 @@ impl Position {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Glyph {
     Farm,
-    #[allow(dead_code)]
     Orc,
+    Rat,
     Goblin,
     House,
     Player,
@@ -76,6 +69,10 @@ pub struct Player;
 /// A component that represents a hostile (monster) entity.
 #[derive(Component, Debug)]
 pub struct Monster;
+
+/// A component that represents an entity that is a non-tree non-player entity.
+#[derive(Component, Debug)]
+pub struct Town;
 
 /// A component that represents an entity that is moving in a specified direction.
 #[derive(Component, Clone, Debug, PartialEq, Eq)]
@@ -149,6 +146,11 @@ impl Health {
         }
     }
 
+    /// Increase the maximum amount of health.
+    pub fn increase(&mut self, amount: u8) {
+        self.maximum = self.maximum.saturating_add(amount);
+    }
+
     /// Increase the amount of health to the maximum.
     pub fn reset(&mut self) {
         self.amount = self.maximum;
@@ -158,3 +160,32 @@ impl Health {
 /// A component that represents an entity that has been defeated.
 #[derive(Component, Debug)]
 pub struct Defeated;
+
+/// A component that represents an entity that is controlled by the AI.
+#[derive(Component, Debug)]
+pub enum AI {
+    /// The AI will randomly move around the map.
+    ///
+    /// - If it attempts to move into a friendly, it stops (enforced by combat system).
+    /// - If it attempts to move out of bounds, it stops.
+    /// - Any other movement is valid (it will attack)
+    ///
+    /// **STATELESS**: This AI does not store any state.
+    Wander,
+
+    /// The AI will move towards the nearest non-tree/non-monster entity.
+    ///
+    /// - If the player is adjacent, it will attack the player instead.
+    /// - It will attack trees if that's the only option.
+    ///
+    /// **STATELESS**: This AI does not store any state.
+    PrioritizeTown,
+
+    /// The AI will move towards the player.
+    ///
+    /// - If a town is adjacent, it will attack the town instead.
+    /// - It will attack trees if that's the only option.
+    ///
+    /// **STATELESS**: This AI does not store any state.
+    PrioritizePlayer,
+}
