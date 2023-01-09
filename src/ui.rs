@@ -1,18 +1,8 @@
 use std::cmp::min;
 
-use bracket_lib::terminal::{BTerm, Point, BLACK, WHITE};
+use bracket_lib::terminal::{BTerm, Console, Point, Rect, VirtualConsole, BLACK, RED, WHITE};
 
 use crate::game::{DrawEntity, GameStats, Glyph};
-
-/// UI module draws the game to the screen.
-pub struct UI<'a> {
-    ctx: &'a mut BTerm,
-    grid_res: i32,
-    uibox_pos: Point,
-    grid_size: (i32, i32),
-    grid_color: (u8, u8, u8),
-    field_size: i32,
-}
 
 pub struct UIEntity {
     pub e: DrawEntity,
@@ -27,30 +17,55 @@ pub struct UIState {
     pub entities: Vec<UIEntity>,
     pub stats: GameStats,
     pub mouse_grid: (i32, i32),
+    pub logs: Vec<String>,
 }
 
 impl UIState {
-    pub fn new(entities: Vec<UIEntity>, stats: GameStats, mouse_grid: (i32, i32)) -> Self {
+    pub fn new(
+        entities: Vec<UIEntity>,
+        stats: GameStats,
+        mouse_grid: (i32, i32),
+        logs: Vec<String>,
+    ) -> Self {
         Self {
             entities,
             stats,
             mouse_grid,
+            logs,
         }
     }
 }
 
+/// UI module draws the game to the screen.
+pub struct UI<'a> {
+    ctx: &'a mut BTerm,
+    sidebar: &'a mut VirtualConsole,
+    logger: &'a mut VirtualConsole,
+    grid_res: i32,
+    grid_color: (u8, u8, u8),
+    field_size: i32,
+    _logs: Vec<String>,
+}
+
 impl<'a> UI<'a> {
     /// Create a new UI from an existing terminal.
-    pub fn new(ctx: &'a mut BTerm, grid_res: i32, grid_color: (u8, u8, u8)) -> Self {
+    pub fn new(
+        ctx: &'a mut BTerm,
+        sidebar: &'a mut VirtualConsole,
+        logger: &'a mut VirtualConsole,
+        grid_res: i32,
+        grid_color: (u8, u8, u8),
+    ) -> Self {
         let grid_size = (ctx.get_char_size().0 as i32, ctx.get_char_size().1 as i32);
         let field_size = min(grid_size.0, grid_size.1);
         Self {
             ctx,
+            sidebar,
+            logger,
             grid_res,
-            uibox_pos: Point::new(grid_size.0 / 4, 0),
-            grid_size,
             grid_color,
             field_size,
+            _logs: Vec::new(),
         }
     }
 
@@ -58,7 +73,9 @@ impl<'a> UI<'a> {
     pub fn draw(&mut self, state: &UIState) {
         self.draw_grid();
 
-        self.draw_ui_box(state);
+        self.draw_sidebar(state);
+
+        self.draw_logger(state);
 
         self.draw_entities(state);
     }
@@ -80,43 +97,77 @@ impl<'a> UI<'a> {
         }
     }
 
-    /// Draw UI Box
-    fn draw_ui_box(&mut self, state: &UIState) {
-        self.uibox_pos = grid2ui((self.field_size / self.grid_res, 0), self.grid_res, false);
+    fn draw_logger(&mut self, state: &UIState) {
+        for (i, log) in state.logs.iter().enumerate() {
+            self.write_row_logger(i as i32, format!("{:?}", log));
+        }
 
-        self.ctx.draw_hollow_box_double(
-            self.uibox_pos.x + 1,
-            self.uibox_pos.y + 1,
-            self.grid_size.0 - self.grid_size.1 - 1,
-            self.grid_size.1 - self.grid_res,
-            BLACK,
-            WHITE,
+        self.logger.draw_hollow_box_double(
+            0,
+            0,
+            self.logger.width as i32 - 2,
+            self.logger.height as i32 - 2,
+            RED.into(),
+            BLACK.into(),
         );
 
-        self.write_ui_box_row(1, format!("Health {:?}", state.stats.health));
-        self.write_ui_box_row(2, format!("Round  {}", state.stats.round));
-        self.write_ui_box_row(3, format!("Farms  {}", state.stats.farms));
-        self.write_ui_box_row(4, format!("Houses {}", state.stats.houses));
-        self.write_ui_box_row(5, format!("Money  $ {}", state.stats.money));
-        self.write_ui_box_row(6, format!("Mouse (GRID) : {:?}", state.mouse_grid));
-        self.write_ui_box_row(
-            7,
-            format!(
-                "Mouse (UI)   : {:?}",
-                grid2ui(state.mouse_grid, self.grid_res, false).to_tuple()
+        self.logger.print_sub_rect(
+            Rect::with_size(0, 0, self.logger.width, self.logger.height),
+            Rect::with_size(
+                (self.field_size + 1).try_into().unwrap(),
+                30,
+                self.logger.width,
+                self.logger.height,
             ),
+            self.ctx,
         );
+    }
+
+    /// Draw Sidebar
+    fn draw_sidebar(&mut self, state: &UIState) {
+        self.sidebar.draw_hollow_box_double(
+            0,
+            0,
+            self.sidebar.width as i32 - 2,
+            self.sidebar.height as i32 - 2,
+            WHITE.into(),
+            BLACK.into(),
+        );
+
+        self.write_row_sidebar(0, format!("Health {:?}", state.stats.health));
+        self.write_row_sidebar(1, format!("Round  {}", state.stats.round));
+        self.write_row_sidebar(2, format!("Farms  {}", state.stats.farms));
+        self.write_row_sidebar(3, format!("Houses {}", state.stats.houses));
+        self.write_row_sidebar(4, format!("Money  $ {}", state.stats.money));
+        self.write_row_sidebar(5, format!("Mouse (GRID) : {:?}", state.mouse_grid));
         for uie in &state.entities {
             if let Glyph::Player = uie.e.glyph {
-                self.write_ui_box_row(8, format!("Player {:?}", (uie.e.x, uie.e.y)));
+                self.write_row_sidebar(6, format!("Player {:?}", (uie.e.x, uie.e.y)));
             }
         }
+        self.sidebar.print_sub_rect(
+            Rect::with_size(0, 0, self.sidebar.width, self.sidebar.height),
+            Rect::with_size(
+                (self.field_size + 1).try_into().unwrap(),
+                0,
+                self.sidebar.width,
+                self.sidebar.height,
+            ),
+            self.ctx,
+        );
     }
-    fn write_ui_box_row(&mut self, row: i32, value: String) {
-        self.ctx.print(
-            self.uibox_pos.x + self.grid_res,
-            self.uibox_pos.y + self.grid_res * row,
-            value,
+    fn write_row_logger(&mut self, row: i32, value: String) {
+        self.logger.print(
+            self.grid_res / 2,
+            (self.grid_res as f64 * (row as f64 + 0.5)) as i32,
+            &value,
+        );
+    }
+    fn write_row_sidebar(&mut self, row: i32, value: String) {
+        self.sidebar.print(
+            self.grid_res / 2,
+            (self.grid_res as f64 * (row as f64 + 0.5)) as i32,
+            &value,
         );
     }
 

@@ -15,7 +15,7 @@ fn main() -> BError {
     let context = BTermBuilder::simple(80, 50)?
         .with_title("Harvest Captain")
         .with_tile_dimensions(16, 16)
-        .with_fullscreen(true)
+        .with_fullscreen(false)
         .build()?;
 
     // Empty state object.
@@ -29,9 +29,10 @@ fn main() -> BError {
 /// We are going to try and have the game state be a representation of the game at a point in time.
 /// grid_res is the resolution of each grid square, i.e., a value of 4 means we have 4 titles per grid square
 struct State {
-    #[allow(dead_code)]
     game: WorldState,
     grid_res: i32,
+    sidebar: VirtualConsole,
+    logger: VirtualConsole,
 }
 
 impl State {
@@ -40,6 +41,8 @@ impl State {
         Self {
             game: WorldState::new(),
             grid_res: 4,
+            sidebar: VirtualConsole::new(Point::new(30, 30)),
+            logger: VirtualConsole::new(Point::new(30, 20)),
         }
     }
 }
@@ -54,11 +57,6 @@ impl GameState for State {
         if ctx.key == Some(VirtualKeyCode::Escape) {
             ctx.quit();
         }
-
-        // // Fullscrean toggle
-        // if ctx.key == Some(VirtualKeyCode::F11) {
-        //     ctx.with_fullscreen(true);
-        // }
 
         // Direction player is moving
         let direction: Option<Direction> = match ctx.key {
@@ -107,15 +105,14 @@ impl GameState for State {
         // Update the game state.
         self.game.tick();
 
-        // Get logs, if any.
-        let logs = self.game.get_logs();
-        if !logs.is_empty() {
-            // TODO: Show these logs to the player.
-            println!("Logs: {:?}", logs);
-        }
-
         // Create a UI renderer.
-        let mut ui = UI::new(ctx, self.grid_res, LIGHTGOLDENROD);
+        let mut ui = UI::new(
+            ctx,
+            &mut self.sidebar,
+            &mut self.logger,
+            self.grid_res,
+            LIGHTGOLDENROD,
+        );
 
         // Create the UI state.
         let ui_state = UIState::new(
@@ -142,6 +139,11 @@ impl GameState for State {
                 .collect(),
             self.game.get_stats(),
             mouse_pos,
+            self.game
+                .get_logs()
+                .into_iter()
+                .map(|l| format!("{:?}", l))
+                .collect(),
         );
 
         // Draw the UI.
