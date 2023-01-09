@@ -109,6 +109,10 @@ impl<'a> UI<'a> {
     }
 
     fn draw_logger(&mut self, state: &UIState) {
+        if !state.logs.is_empty() {
+            self.logger.cls();
+        }
+
         for (i, log) in state.logs.iter().enumerate() {
             #[allow(clippy::single_match)]
             match log {
@@ -162,6 +166,7 @@ impl<'a> UI<'a> {
     }
     /// Draw Sidebar
     fn draw_sidebar(&mut self, state: &UIState) {
+        self.sidebar.cls();
         self.sidebar.draw_hollow_box_double(
             0,
             0,
