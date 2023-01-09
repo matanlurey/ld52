@@ -135,8 +135,8 @@ impl WorldState {
             rng,
         };
 
-        // Spawn the goblins.
-        it.spawn_goblins();
+        // Spawn the monsters.
+        it.spawn_monsters();
 
         it
     }
@@ -377,7 +377,7 @@ impl WorldState {
     /// Indicates the player is ready, spawning goblins.
     #[allow(dead_code)]
     pub fn player_ready(&mut self) {
-        self.spawn_goblins();
+        self.spawn_monsters();
 
         // Change state to start the game again.
         let mut run_state = self.ecs.fetch_mut::<RunState>();
@@ -385,7 +385,7 @@ impl WorldState {
     }
 
     /// For the given round number, spawn R+3 goblins at the edge of the map.
-    fn spawn_goblins(&mut self) {
+    fn spawn_monsters(&mut self) {
         // Get the round number to determine how many goblins to spawn.
         let goblins_to_spawn = { self.ecs.fetch::<Map>().round().get() + 3 } as usize;
 
@@ -453,8 +453,23 @@ impl WorldState {
         };
 
         // Spawn the goblins.
+        // After level 2, (e.g. starting at 3) L - 2 goblins are actually orcs.
+        let mut orcs = {
+            let map = self.ecs.fetch::<Map>();
+            let round = map.round().get();
+            if round >= 3 {
+                round - 2
+            } else {
+                0
+            }
+        };
         for (x, y) in positions.into_iter().take(goblins_to_spawn) {
-            demo::configure_goblin(self.ecs.create_entity(), x, y).build();
+            if orcs > 0 {
+                orcs -= 1;
+                demo::configure_orc(self.ecs.create_entity(), x, y).build();
+            } else {
+                demo::configure_goblin(self.ecs.create_entity(), x, y).build();
+            }
         }
     }
 

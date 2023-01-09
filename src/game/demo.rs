@@ -65,6 +65,14 @@ pub fn configure_goblin(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder 
     entity
         .with(Position::new(x, y))
         .with(Renderable::new(Glyph::Goblin))
+        .with(Health::new(1))
+        .with(Monster)
+}
+
+pub fn configure_orc(entity: EntityBuilder, x: i32, y: i32) -> EntityBuilder {
+    entity
+        .with(Position::new(x, y))
+        .with(Renderable::new(Glyph::Orc))
         .with(Health::new(2))
         .with(Monster)
 }
