@@ -129,6 +129,7 @@ impl GameState for State {
                         Glyph::Wall => '#',
                         Glyph::Farm => 'f',
                         Glyph::House => 'h',
+                        Glyph::Tree => 't',
                     },
                     color: match de.glyph {
                         Glyph::Goblin => RED,

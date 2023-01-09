@@ -1,5 +1,4 @@
 //! Demo system.
-
 use super::components::*;
 use specs::prelude::*;
 
