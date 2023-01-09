@@ -128,11 +128,16 @@ impl WorldState {
         ecs.insert(Logs::new());
         ecs.insert(level_generator);
 
-        Self {
+        let mut it = Self {
             ecs,
             player_entity: player_entity.expect("A player entity must be present"),
             rng,
-        }
+        };
+
+        // Spawn the goblins.
+        it.spawn_goblins();
+
+        it
     }
 
     pub fn tick(&mut self) {
@@ -378,40 +383,76 @@ impl WorldState {
         *run_state = RunState::PreRun;
     }
 
-    /// For the given round number, spawn R+1 goblins at the edge of the map.
+    /// For the given round number, spawn R+3 goblins at the edge of the map.
     fn spawn_goblins(&mut self) {
-        let positions: Vec<(i32, i32)> = {
-            // Get the map.
-            let map = self.ecs.fetch::<Map>();
+        // Get the round number to determine how many goblins to spawn.
+        let goblins_to_spawn = { self.ecs.fetch::<Map>().round().get() + 3 } as usize;
 
-            // Get the round number.
-            let round = map.round().get();
+        let positions: Vec<(i32, i32)> = {
+            // Get the map and level generator.
+            let map = self.ecs.fetch::<Map>();
+            let mut generator = self.ecs.fetch_mut::<LevelGenerator>();
+
+            // Start at the edge of the map, and move inwards if we can't find a position.
+            let mut from_edge = 0;
 
             // Get the positions.
             let mut positions = Vec::new();
-            for _ in 0..round + 1 {
-                let mut position: (i32, i32) = (0, 0);
-                let mut found = false;
-                for _ in 0..100 {
-                    position = (
-                        self.rng.range(0, map.width() as i32),
-                        self.rng.range(0, map.height() as i32),
-                    );
-                    if map.get_entity(position.0, position.1).is_none() {
-                        found = true;
-                        break;
+            while positions.len() < goblins_to_spawn {
+                // Make a list of all positions from_edge tiles away from the edge.
+                let mut positions_to_try = Vec::new();
+
+                // For example in the following grid:
+                // x x x x
+                // x     x
+                // x     x
+                // x x x x
+                //
+                // Try all the "x" spots.
+                // iF that doesnt' work, we'll try the inner-x box and so on:
+                //
+                //   x x
+                //   x x
+
+                // Top row.
+                for x in from_edge..(map.width() - from_edge) {
+                    positions_to_try.push((x, from_edge));
+                }
+
+                // Bottom row.
+                for x in from_edge..(map.width() - from_edge) {
+                    positions_to_try.push((x, map.height() - from_edge - 1));
+                }
+
+                // Left column.
+                for y in from_edge..(map.height() - from_edge) {
+                    positions_to_try.push((from_edge, y));
+                }
+
+                // Right column.
+                for y in from_edge..(map.height() - from_edge) {
+                    positions_to_try.push((map.width() - from_edge - 1, y));
+                }
+
+                // Shuffle the list.
+                generator.shuffle(&mut self.rng, &mut positions_to_try);
+
+                // Try to find a position that is not occupied.
+                for (x, y) in positions_to_try {
+                    if map.get_entity(x as i32, y as i32).is_none() {
+                        positions.push((x as i32, y as i32));
                     }
                 }
-                if found {
-                    positions.push(position);
-                }
+
+                from_edge += 1;
             }
 
+            generator.shuffle(&mut self.rng, &mut positions);
             positions
         };
 
         // Spawn the goblins.
-        for (x, y) in positions {
+        for (x, y) in positions.into_iter().take(goblins_to_spawn) {
             demo::configure_goblin(self.ecs.create_entity(), x, y).build();
         }
     }

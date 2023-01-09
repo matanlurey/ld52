@@ -160,13 +160,15 @@ impl LevelGenerator {
     }
 
     /// Given a vector of items, shuffles them in place.
-    fn shuffle<T>(&mut self, rng: &mut RandomNumberGenerator, items: &mut Vec<T>) {
+    pub fn shuffle<T>(&mut self, rng: &mut RandomNumberGenerator, items: &mut Vec<T>) {
         // This is not a great shuffle impl, but self.rng is not a great RNG impl.
         // In practice we should not need something significantly better.
+        let starting_len = items.len();
         for i in 0..items.len() {
             let j = rng.range(0, items.len());
             items.swap(i, j);
         }
+        debug_assert!(items.len() == starting_len);
     }
 
     /// Returns all positions of a given item type in a grid, shuffled.
