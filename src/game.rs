@@ -9,6 +9,8 @@ pub use components::Moving as Direction;
 use map::Map;
 
 use self::level_generator::LevelGenerator;
+use self::level_generator::LevelInsert;
+use self::level_generator::LevelItem;
 use self::logger::LogMessage;
 use self::logger::Logs;
 
@@ -116,18 +118,19 @@ impl WorldState {
 
         // Start the demo.
         let mut rng = RandomNumberGenerator::new();
-        let mut level_generator = LevelGenerator::new(&mut rng);
-        let level_items = level_generator.generate(12, 12, 2, 0.2);
+        let mut level_generator = LevelGenerator::new(12, 12);
+        let level_items = level_generator.generate(&mut rng, 2, 0.15);
         let player_entity = LevelGenerator::insert(&mut ecs, level_items);
 
         // Insert the map and initial running state.
         ecs.insert(Map::new(12, 12));
         ecs.insert(RunState::PreRun);
         ecs.insert(Logs::new());
+        ecs.insert(level_generator);
 
         Self {
             ecs,
-            player_entity,
+            player_entity: player_entity.expect("A player entity must be present"),
             rng,
         }
     }
@@ -309,44 +312,60 @@ impl WorldState {
 
     /// Spawns a new house by finding an open position at least 2 tiles away from other houses.
     fn spawn_house(&mut self) {
-        let (found, position) = {
-            // Get the map.
-            let map = self.ecs.fetch::<Map>();
+        let map = self.ecs.fetch::<Map>();
 
-            // Find an open position at least 2 tiles away from other houses.
-            let mut position: (i32, i32) = (0, 0);
-            let mut found = false;
+        // Create a grid (vector) that the level generator can use.
+        #[rustfmt::skip]
+        let mut grid: Vec<Vec<Option<LevelItem>>> = vec![
+            vec![None; map.width()]; map.height()
+        ];
 
-            for _ in 0..100 {
-                position = (
-                    self.rng.range(0, map.width() as i32),
-                    self.rng.range(0, map.height() as i32),
-                );
-                if map.get_entity(position.0, position.1).is_none() {
-                    let mut valid = true;
-                    for x in position.0 - 2..position.0 + 2 {
-                        for y in position.1 - 2..position.1 + 2 {
-                            if map.get_entity(x, y).is_some() {
-                                valid = false;
-                                break;
-                            }
-                        }
-                    }
-                    if valid {
-                        found = true;
-                        break;
-                    }
-                }
-            }
-
-            (found, position)
-        };
-
-        // If we found a valid position, spawn a house.
-        if found {
-            let (x, y) = position;
-            demo::configure_house(self.ecs.create_entity(), x, y).build();
+        // Add placeholders (e.g. trees) to the grid for every entity.
+        let positions = self.ecs.read_storage::<components::Position>();
+        for position in (&positions).join() {
+            let x = position.x as usize;
+            let y = position.y as usize;
+            grid[y][x] = Some(LevelItem::Tree);
         }
+
+        // Iterate over all the houses and add them to the grid.
+        let renderables = self.ecs.read_storage::<components::Renderable>();
+        for (house, position) in (&renderables, &positions).join() {
+            if house.glyph() != Glyph::House {
+                continue;
+            }
+            let x = position.x as usize;
+            let y = position.y as usize;
+            grid[y][x] = Some(LevelItem::House);
+        }
+
+        // Re-use the level generator to find a new house position.
+        let mut generator = self.ecs.fetch_mut::<LevelGenerator>();
+        let position = generator.find_somewhat_adjacent_position(
+            &mut self.rng,
+            2,
+            5,
+            &LevelItem::House,
+            &grid,
+        );
+
+        // This is hacky but so is this entire function.
+        drop(map);
+        drop(positions);
+        drop(renderables);
+        drop(generator);
+
+        // Convert position into a u8, u8.
+        let position = (position.0 as u8, position.1 as u8);
+
+        // Spawn the house.
+        LevelGenerator::insert(
+            &mut self.ecs,
+            vec![LevelInsert {
+                item: LevelItem::House,
+                position,
+            }],
+        );
     }
 
     /// Indicates the player is ready, spawning goblins.
