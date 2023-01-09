@@ -21,7 +21,7 @@ mod components;
 #[allow(dead_code)]
 mod demo;
 mod level_generator;
-mod logger;
+pub mod logger;
 mod map;
 mod movement;
 mod tree_growth;
@@ -627,5 +627,10 @@ impl WorldState {
             houses,
             state,
         }
+    }
+
+    pub fn map_size(&mut self) -> (i32, i32) {
+        let map = self.ecs.fetch::<Map>();
+        (map.width() as i32, map.height() as i32)
     }
 }
