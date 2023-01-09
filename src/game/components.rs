@@ -149,6 +149,11 @@ impl Health {
         }
     }
 
+    /// Increase the maximum amount of health.
+    pub fn increase(&mut self, amount: u8) {
+        self.maximum = self.maximum.saturating_add(amount);
+    }
+
     /// Increase the amount of health to the maximum.
     pub fn reset(&mut self) {
         self.amount = self.maximum;

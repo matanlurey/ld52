@@ -7,6 +7,7 @@ pub use components::Glyph;
 pub use components::Moving as Direction;
 
 use map::Map;
+use specs::shred::FetchMut;
 
 use self::level_generator::LevelGenerator;
 use self::level_generator::LevelInsert;
@@ -23,6 +24,7 @@ mod logger;
 mod map;
 mod monster;
 mod movement;
+mod tree_growth;
 
 /// Our external world state, i.e. how it will be drawn to the screen.
 #[derive(Debug)]
@@ -81,7 +83,6 @@ pub enum RunState {
 /// A logical representation of the game world and its state.
 pub struct WorldState {
     ecs: World,
-    rng: RandomNumberGenerator,
     player_entity: Entity,
 }
 
@@ -127,18 +128,22 @@ impl WorldState {
         ecs.insert(Map::new(12, 12));
         ecs.insert(RunState::PreRun);
         ecs.insert(Logs::new());
+        ecs.insert(rng);
         ecs.insert(level_generator);
 
         let mut it = Self {
             ecs,
             player_entity: player_entity.expect("A player entity must be present"),
-            rng,
         };
 
         // Spawn the monsters.
         it.spawn_monsters();
 
         it
+    }
+
+    fn rng(&self) -> FetchMut<RandomNumberGenerator> {
+        self.ecs.fetch_mut::<RandomNumberGenerator>()
     }
 
     pub fn tick(&mut self) {
@@ -204,9 +209,14 @@ impl WorldState {
             let mut map = self.ecs.fetch_mut::<Map>();
             map.next_round();
 
-            // Reset the player's health.
+            // Grow trees.
+            tree_growth::TreeGrowthSystem.run_now(&self.ecs);
+
+            // Reset all health.
             let mut health = self.ecs.write_storage::<components::Health>();
-            health.get_mut(self.player_entity).unwrap().reset();
+            for h in (&mut health).join() {
+                h.reset();
+            }
 
             // Give 1 $ for each surviving farm glyph.
             map.money += map.farms;
@@ -348,7 +358,7 @@ impl WorldState {
         // Re-use the level generator to find a new house position.
         let mut generator = self.ecs.fetch_mut::<LevelGenerator>();
         let position = generator.find_somewhat_adjacent_position(
-            &mut self.rng,
+            &mut self.rng(),
             2,
             5,
             &LevelItem::House,
@@ -436,7 +446,7 @@ impl WorldState {
                 }
 
                 // Shuffle the list.
-                generator.shuffle(&mut self.rng, &mut positions_to_try);
+                generator.shuffle(&mut self.rng(), &mut positions_to_try);
 
                 // Try to find a position that is not occupied.
                 for (x, y) in positions_to_try {
@@ -448,7 +458,7 @@ impl WorldState {
                 from_edge += 1;
             }
 
-            generator.shuffle(&mut self.rng, &mut positions);
+            generator.shuffle(&mut self.rng(), &mut positions);
             positions
         };
 
