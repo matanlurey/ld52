@@ -495,7 +495,6 @@ impl WorldState {
 
         // Iterate over all of the entities that have a position and renderable component.
         for (pos, render, hp) in (&positions, &renderables, &health).join() {
-            let pos = pos.to_point();
             drawables.push(DrawEntity {
                 x: pos.x,
                 y: pos.y,

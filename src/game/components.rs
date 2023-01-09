@@ -42,6 +42,8 @@ impl Position {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Glyph {
     Farm,
+    #[allow(dead_code)]
+    Orc,
     Goblin,
     House,
     Player,
